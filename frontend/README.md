@@ -17,6 +17,12 @@ A polished Next.js frontend for the TradePepe trade analytics and journaling pla
 - Custom analytics builder
 - Community feed
 - Profile page
+- Auth flow
+
+## Product docs
+- `../docs/frontend-features.md`
+- `../docs/integration-audit.md`
+- `../docs/third-party-api-report.md`
 
 ## Run locally
 ```bash
