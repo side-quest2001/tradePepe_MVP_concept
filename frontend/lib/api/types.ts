@@ -83,14 +83,93 @@ export type WinLoss = {
 export type CommunityPost = {
   id: string;
   author: {
+    id: string;
     name: string;
     handle: string;
-    avatar: string;
+    avatar: string | null;
   };
   tradeId: string;
   title: string;
   summary: string;
   likes: number;
   comments: number;
+  createdAt: string;
+};
+
+export type AuthUser = {
+  id: string;
+  email: string;
+  name: string;
+  handle: string;
+  avatarUrl: string | null;
+  coverUrl: string | null;
+  activeSince: string;
+  bio: string | null;
+  emailVerifiedAt?: string | null;
+};
+
+export type AuthResponse = {
+  user: AuthUser;
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+};
+
+export type UserProfile = AuthUser & {
+  stats: {
+    trades: number;
+    following: number;
+    followers: number;
+    published: number;
+  };
+};
+
+export type CommunityComment = {
+  id: string;
+  postId: string;
+  content: string;
+  createdAt: string;
+  author: {
+    id: string;
+    name: string;
+    handle: string;
+    avatar: string | null;
+  };
+};
+
+export type FlashNewsItem = {
+  id: string;
+  title: string;
+  summary: string;
+  source: string;
+  createdAt: string;
+};
+
+export type EconomicIndicatorRow = {
+  id?: string;
+  country: string;
+  indicator: string;
+  september: string;
+  october: string;
+  november: string;
+  december: string;
+};
+
+export type Fund = {
+  id: string;
+  name: string;
+  brokerName: string | null;
+  currency: string;
+  createdAt: string;
+};
+
+export type ImportHistory = {
+  importId: string;
+  fundId: string;
+  brokerName: string | null;
+  fileName: string | null;
+  totalRows: number;
+  importedRows: number;
+  failedRows: number;
   createdAt: string;
 };

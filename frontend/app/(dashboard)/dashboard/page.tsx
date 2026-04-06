@@ -1,8 +1,11 @@
+import Image from 'next/image';
 import { Bell, ChevronDown, Info } from 'lucide-react';
 import { DashboardEconomicSection } from '@/components/dashboard/dashboard-economic-section';
 import { DashboardPerformanceSection } from '@/components/dashboard/dashboard-performance-section';
 import { Panel } from '@/components/ui/panel';
 import {
+  getEconomicIndicators,
+  getFlashNews,
   getPerformanceCalendar,
   getPnlSeries,
   getSummary,
@@ -120,33 +123,14 @@ function TopWinRateCard({
 }
 
 export default async function DashboardPage() {
-  const [summary, calendar, pnlSeries, winLoss] = await Promise.all([
+  const [summary, calendar, pnlSeries, winLoss, flashNews, economicIndicators] = await Promise.all([
     getSummary(),
     getPerformanceCalendar(),
     getPnlSeries(),
     getWinLoss(),
+    getFlashNews().catch(() => []),
+    getEconomicIndicators().catch(() => []),
   ]);
-
-  const flashNews = [
-    {
-      title: 'Broader Market News',
-      body: 'Nifty IT index drops 2% as US tech stocks face selloff; TCS, Infosys lead declines',
-      image:
-        'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=120&q=80',
-    },
-    {
-      title: 'RBI Repo Rate',
-      body: "RBI keeps repo rate unchanged at 6.50%; maintains 'withdrawal of accommodation' stance",
-      image:
-        'https://images.unsplash.com/photo-1642790551116-18e150f248e5?auto=format&fit=crop&w=120&q=80',
-    },
-    {
-      title: 'FIIDII',
-      body: 'FIIs turn net sellers in cash market, offload shares worth ₹3,245 cr amid global volatility',
-      image:
-        'https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=120&q=80',
-    },
-  ];
 
   return (
     <div className="space-y-6">
@@ -217,7 +201,7 @@ export default async function DashboardPage() {
       <DashboardPerformanceSection calendar={calendar} pnlSeries={pnlSeries} />
 
       <section className="grid gap-4 xl:grid-cols-[1.7fr_0.83fr]">
-        <DashboardEconomicSection />
+        <DashboardEconomicSection rows={economicIndicators} />
 
         <Panel className="rounded-[10px] border-[#273646] bg-[#1e2935] p-4 shadow-none">
           <div className="flex items-center justify-between gap-4">
@@ -229,20 +213,24 @@ export default async function DashboardPage() {
             {flashNews.map((item, index) => (
               <div key={item.title}>
                 <div className="flex gap-3">
-                  <img
-                    src={item.image}
+                  <Image
+                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(item.source)}&background=1e2935&color=ffffff`}
                     alt={item.title}
+                    width={40}
+                    height={40}
+                    unoptimized
                     className="h-[40px] w-[40px] rounded-[10px] object-cover"
-                    referrerPolicy="no-referrer"
                   />
                   <div className="min-w-0 flex-1">
                     <h3 className="text-[13px] font-semibold leading-5 text-[#eef4fb]">
                       {item.title}
                     </h3>
                     <p className="mt-1 text-[12px] leading-5 text-[#d4dde6]">
-                      {item.body}
+                      {item.summary}
                     </p>
-                    <p className="mt-2 text-[11px] text-[#98a4b1]">Today, 9:45 am</p>
+                    <p className="mt-2 text-[11px] text-[#98a4b1]">
+                      {new Date(item.createdAt).toLocaleString()}
+                    </p>
                   </div>
                 </div>
                 {index !== flashNews.length - 1 ? (

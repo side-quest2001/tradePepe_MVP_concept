@@ -125,9 +125,9 @@ export function TradeDetail({ group, pnlSeries }: { group: OrderGroup; pnlSeries
     <div className="space-y-6">
       <Panel className="overflow-hidden border-white/10 bg-[#1f2731] p-3 shadow-[0_24px_60px_rgba(0,0,0,0.35)]">
         <div className="rounded-[28px] border border-white/10 bg-[#202832] p-3">
-          <div className="overflow-hidden rounded-[22px] border border-white/5 bg-[#1f2731]">
-            <div className="grid grid-cols-[18px_minmax(74px,1fr)_minmax(84px,1fr)_minmax(52px,0.7fr)_minmax(68px,0.8fr)_minmax(104px,1fr)_minmax(88px,0.8fr)_minmax(120px,1fr)_minmax(88px,0.8fr)_minmax(104px,1fr)_minmax(68px,0.8fr)_minmax(52px,0.7fr)_minmax(84px,1fr)_minmax(74px,1fr)] border-b border-white/5 bg-[#27313d] text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-              <LedgerCell />
+            <div className="overflow-hidden rounded-[22px] border border-white/5 bg-[#1f2731]">
+              <div className="grid grid-cols-[18px_minmax(74px,1fr)_minmax(84px,1fr)_minmax(52px,0.7fr)_minmax(68px,0.8fr)_minmax(104px,1fr)_minmax(88px,0.8fr)_minmax(120px,1fr)_minmax(88px,0.8fr)_minmax(104px,1fr)_minmax(68px,0.8fr)_minmax(52px,0.7fr)_minmax(84px,1fr)_minmax(74px,1fr)] border-b border-white/5 bg-[#27313d] text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              <LedgerCell align="center"> </LedgerCell>
               <LedgerCell align="center">Date</LedgerCell>
               <LedgerCell align="center">Time</LedgerCell>
               <LedgerCell align="center">Qty</LedgerCell>

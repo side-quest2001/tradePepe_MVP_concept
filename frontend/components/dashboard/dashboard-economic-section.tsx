@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Panel } from '@/components/ui/panel';
+import type { EconomicIndicatorRow } from '@/lib/api/types';
 
 function MetricMenu({ label }: { label: string }) {
   return (
@@ -13,7 +14,11 @@ function MetricMenu({ label }: { label: string }) {
   );
 }
 
-export function DashboardEconomicSection() {
+export function DashboardEconomicSection({
+  rows,
+}: {
+  rows?: EconomicIndicatorRow[];
+}) {
   const [view, setView] = useState<'calendar' | 'indicators'>('calendar');
 
   const calendarRows = [
@@ -62,13 +67,35 @@ export function DashboardEconomicSection() {
     },
   ];
 
+  const liveRows = rows?.length
+    ? rows.reduce<Array<{ country: string; events: string[][] }>>((acc, row) => {
+        const country = row.country.toUpperCase();
+        const existing = acc.find((item) => item.country === country);
+        const event = [row.indicator, row.september, row.october, row.november, row.december];
+        if (existing) {
+          existing.events.push(event);
+        } else {
+          acc.push({ country, events: [event] });
+        }
+        return acc;
+      }, [])
+    : null;
+
+  const calendarHeaders = liveRows
+    ? ['Country', 'Event Indicators', 'Actual', 'Previous', 'Reference', 'Unit']
+    : ['Country', 'Event Indicators', 'September', 'October', 'November', 'December'];
+
+  const indicatorHeaders = liveRows
+    ? ['Country', 'Indicator', 'Actual', 'Previous', 'Reference', 'Unit']
+    : ['Country', 'Indicator', 'Actual', 'Forecast', 'Previous', 'Outlook'];
+
   return (
     <Panel className="rounded-[10px] border-[#273646] bg-[#1e2935] p-4 shadow-none">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-5">
           <h2 className="text-[14px] font-semibold text-[#eef4fb]">Economic Calendar</h2>
           <div className="text-[12px] font-medium text-[#95a3b4]">
-            Powered by <span className="text-[#b7c2cf]">dIndiaDataHub</span>
+            Powered by <span className="text-[#b7c2cf]">{liveRows ? 'TradePepe Market Layer' : 'dIndiaDataHub'}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -106,17 +133,14 @@ export function DashboardEconomicSection() {
         <>
           <div className="mt-4 overflow-hidden rounded-[6px] bg-[#253240]">
             <div className="grid grid-cols-[140px_1.3fr_0.72fr_0.72fr_0.72fr_0.72fr] px-4 py-3 text-[12px] font-semibold text-[#aeb8c4]">
-              <div>Country</div>
-              <div>Event Indicators</div>
-              <div>September</div>
-              <div>October</div>
-              <div>November</div>
-              <div>December</div>
+              {calendarHeaders.map((header) => (
+                <div key={header}>{header}</div>
+              ))}
             </div>
           </div>
 
           <div className="mt-4 space-y-3">
-            {calendarRows.map((row) => (
+            {(liveRows ?? calendarRows).map((row) => (
               <div key={row.country} className="overflow-hidden rounded-[6px] bg-[#2b3642]">
                 <div className="grid grid-cols-[96px_1fr]">
                   <div className="flex items-center justify-center border-r border-white/10 px-4 py-4">
@@ -147,17 +171,14 @@ export function DashboardEconomicSection() {
         <>
           <div className="mt-4 overflow-hidden rounded-[6px] bg-[#253240]">
             <div className="grid grid-cols-[140px_1.4fr_0.72fr_0.72fr_0.72fr_0.72fr] px-4 py-3 text-[12px] font-semibold text-[#aeb8c4]">
-              <div>Country</div>
-              <div>Indicator</div>
-              <div>Actual</div>
-              <div>Forecast</div>
-              <div>Previous</div>
-              <div>Outlook</div>
+              {indicatorHeaders.map((header) => (
+                <div key={header}>{header}</div>
+              ))}
             </div>
           </div>
 
           <div className="mt-4 space-y-3">
-            {indicatorRows.map((row) => (
+            {(liveRows ?? indicatorRows).map((row) => (
               <div key={row.country} className="overflow-hidden rounded-[6px] bg-[#2b3642]">
                 <div className="grid grid-cols-[96px_1fr]">
                   <div className="flex items-center justify-center border-r border-white/10 px-4 py-4">

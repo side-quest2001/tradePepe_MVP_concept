@@ -1,10 +1,17 @@
 import {
+  AuthUser,
   CalendarBucket,
+  CommunityComment,
   CommunityPost,
+  EconomicIndicatorRow,
+  FlashNewsItem,
+  Fund,
+  ImportHistory,
   OrderGroup,
   PnlPoint,
   SummaryAnalytics,
   Tag,
+  UserProfile,
   WinLoss,
 } from '@/lib/api/types';
 import {
@@ -16,8 +23,8 @@ import {
   mockWinLoss,
 } from '@/lib/mocks/data';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000/api/v1';
-const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS !== 'false';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api/v1';
+const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
 
 async function fetcher<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -82,17 +89,102 @@ export async function getTags(type?: 'setup' | 'review'): Promise<Tag[]> {
 
 export async function getCommunityPosts(): Promise<CommunityPost[]> {
   if (USE_MOCKS) return mockPosts;
-  const groups = await getOrderGroups();
-  return groups
-    .filter((group) => group.publishedTrade)
-    .map((group) => ({
-      id: group.id,
-      tradeId: group.id,
-      title: group.publishedTrade?.title ?? group.symbol,
-      summary: group.publishedTrade?.summary ?? group.notesSummary,
-      likes: group.publishedTrade?.likes ?? 0,
-      comments: group.publishedTrade?.comments ?? 0,
-      createdAt: group.lastInteractionDate,
-      author: { name: 'TradePepe User', handle: '@trader', avatar: 'T' },
-    }));
+  return fetcher<CommunityPost[]>('/community/feed');
+}
+
+export async function getCommunityComments(postId: string): Promise<CommunityComment[]> {
+  if (USE_MOCKS) return [];
+  return fetcher<CommunityComment[]>(`/community/posts/${postId}/comments`);
+}
+
+export async function createCommunityComment(
+  postId: string,
+  token: string,
+  content: string
+): Promise<CommunityComment> {
+  return fetcher<CommunityComment>(`/community/posts/${postId}/comments`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ content }),
+  });
+}
+
+export async function toggleCommunityReaction(
+  postId: string,
+  token: string
+): Promise<{ postId: string; likes: number; liked: boolean }> {
+  return fetcher<{ postId: string; likes: number; liked: boolean }>(
+    `/community/posts/${postId}/reactions`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+}
+
+export async function getMyProfile(token: string): Promise<UserProfile> {
+  return fetcher<UserProfile>('/profiles/me', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function getPublicProfile(handle: string): Promise<UserProfile> {
+  return fetcher<UserProfile>(`/profiles/${handle.replace(/^@/, '')}`);
+}
+
+export async function getFlashNews(): Promise<FlashNewsItem[]> {
+  return fetcher<FlashNewsItem[]>('/market/flash-news');
+}
+
+export async function getEconomicIndicators(): Promise<EconomicIndicatorRow[]> {
+  return fetcher<EconomicIndicatorRow[]>('/market/economic-indicators');
+}
+
+export async function getFunds(): Promise<Fund[]> {
+  return fetcher<Fund[]>('/funds');
+}
+
+export async function getImports(): Promise<ImportHistory[]> {
+  return fetcher<ImportHistory[]>('/imports?page=1&pageSize=20');
+}
+
+export async function uploadImportCsv(input: {
+  token: string;
+  file: File;
+  fundId: string;
+  brokerName?: string;
+}) {
+  const formData = new FormData();
+  formData.append('file', input.file);
+  formData.append('fundId', input.fundId);
+  if (input.brokerName) {
+    formData.append('brokerName', input.brokerName);
+  }
+
+  const response = await fetch(`${API_BASE}/imports/csv`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${input.token}`,
+    },
+    body: formData,
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.error?.message ?? 'Import failed');
+  }
+
+  return payload.data as {
+    importId: string;
+    totalRows: number;
+    importedRows: number;
+    failedRows: number;
+    errors: Array<{ rowNumber: number; messages: string[] }>;
+  };
 }

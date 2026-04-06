@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 import type { Route } from 'next';
 import Link from 'next/link';
@@ -15,6 +16,8 @@ import {
   Settings2,
   type LucideIcon,
 } from 'lucide-react';
+import { useAuth } from '@/components/auth/auth-provider';
+import { SignOutButton } from '@/components/auth/signout-button';
 
 const navItems: ReadonlyArray<{
   href: Route;
@@ -31,6 +34,7 @@ const navItems: ReadonlyArray<{
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(true);
+  const { user } = useAuth();
 
   return (
     <aside
@@ -43,11 +47,13 @@ export function Sidebar() {
         <div className="px-3 pb-3 pt-3">
           <div className={`flex items-start ${collapsed ? 'justify-between' : 'gap-3'}`}>
             <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#0d6c59] ring-1 ring-[#1b3a3d]">
-              <img
+              <Image
                 src="https://i.imgur.com/6VBx3io.png"
                 alt="Pepe"
+                width={40}
+                height={40}
+                unoptimized
                 className="h-full w-full object-cover"
-                referrerPolicy="no-referrer"
               />
             </div>
 
@@ -122,13 +128,23 @@ export function Sidebar() {
             {/* Bottom */}
             <div className="mt-auto pb-5 pt-5">
               <div className="mx-1 mb-4 border-t border-[#213244]" />
-              <div className={collapsed ? 'flex justify-center' : 'px-3'}>
+              {!collapsed && user ? (
+                <div className="mb-4 px-3">
+                  <p className="text-[12px] font-semibold text-[#eef4fb]">{user.name}</p>
+                  <p className="mt-1 text-[11px] text-[#7f8da1]">{user.handle}</p>
+                </div>
+              ) : null}
+              <div className={`space-y-3 ${collapsed ? 'flex flex-col items-center' : 'px-3'}`}>
                 <button
                   type="button"
-                  className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#122437] text-[#95a3b4] shadow-[inset_0_0_0_1px_rgba(120,160,200,0.12)] transition hover:text-[#dbe6f2]"
+                  className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'} text-[#95a3b4] transition hover:text-[#dbe6f2]`}
                 >
-                  <Settings2 className="h-5 w-5" />
+                  <span className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#122437] shadow-[inset_0_0_0_1px_rgba(120,160,200,0.12)]">
+                    <Settings2 className="h-5 w-5" />
+                  </span>
+                  {!collapsed ? <span className="text-[13px] font-medium">Settings</span> : null}
                 </button>
+                <SignOutButton collapsed={collapsed} />
               </div>
             </div>
           </div>

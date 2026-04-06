@@ -1,12 +1,15 @@
+'use client';
+
 import Image from 'next/image';
 import {
   Heart,
+  LoaderCircle,
   MessageCircle,
   MoreHorizontal,
-  Pin,
   Send,
   Sparkles,
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { CommunityPost, OrderGroup } from '@/lib/api/types';
 import {
   formatCompactPrice,
@@ -16,6 +19,13 @@ import {
 import { Panel } from '@/components/ui/panel';
 import { formatDateTime } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
+import { useAuth } from '@/components/auth/auth-provider';
+import { getAccessTokenFromBrowser } from '@/lib/auth';
+import {
+  createCommunityComment,
+  getCommunityComments,
+  toggleCommunityReaction,
+} from '@/lib/api/client';
 
 type FeedCardProps = {
   post: CommunityPost;
@@ -23,25 +33,6 @@ type FeedCardProps = {
   expanded?: boolean;
   context?: 'community' | 'profile';
 };
-
-const comments = [
-  {
-    id: 'c1',
-    author: 'Roundhog34',
-    avatar:
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=64&q=80',
-    text: 'Impressive execution! Did you monitor order flow data to confirm the breakout, or was this purely based on the price action? Either way...',
-    primary: true,
-  },
-  {
-    id: 'c2',
-    author: 'Mightymax77',
-    avatar:
-      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=64&q=80',
-    text: 'Thanks for sharing this! The way you managed the retrace setup has given me some ideas for improving my entries. Keep these insights coming!',
-    primary: false,
-  },
-];
 
 function Chip({
   label,
@@ -165,6 +156,79 @@ export function FeedCard({
   context = 'community',
 }: FeedCardProps) {
   const isProfile = context === 'profile';
+  const { user } = useAuth();
+  const [comments, setComments] = useState<
+    Array<{
+      id: string;
+      author: string;
+      avatar: string | null;
+      text: string;
+      createdAt: string;
+    }>
+  >([]);
+  const [likes, setLikes] = useState(post.likes);
+  const [commentDraft, setCommentDraft] = useState('');
+  const [loadingComments, setLoadingComments] = useState(expanded);
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [liked, setLiked] = useState(false);
+
+  useEffect(() => {
+    if (!expanded) return;
+    let active = true;
+    setLoadingComments(true);
+    getCommunityComments(post.id)
+      .then((items) => {
+        if (!active) return;
+        setComments(
+          items.map((item) => ({
+            id: item.id,
+            author: item.author.name,
+            avatar: item.author.avatar,
+            text: item.content,
+            createdAt: item.createdAt,
+          }))
+        );
+      })
+      .finally(() => {
+        if (active) setLoadingComments(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [expanded, post.id]);
+
+  const handleReaction = async () => {
+    const accessToken = getAccessTokenFromBrowser();
+    if (!accessToken || !user) return;
+
+    const result = await toggleCommunityReaction(post.id, accessToken);
+    setLikes(result.likes);
+    setLiked(result.liked);
+  };
+
+  const handleComment = async () => {
+    const accessToken = getAccessTokenFromBrowser();
+    if (!accessToken || !user || !commentDraft.trim()) return;
+
+    setSubmittingComment(true);
+    try {
+      const comment = await createCommunityComment(post.id, accessToken, commentDraft.trim());
+      setComments((current) => [
+        {
+          id: comment.id,
+          author: comment.author.name,
+          avatar: comment.author.avatar,
+          text: comment.content,
+          createdAt: comment.createdAt,
+        },
+        ...current,
+      ]);
+      setCommentDraft('');
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
 
   return (
     <Panel
@@ -177,7 +241,10 @@ export function FeedCard({
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#253240] font-semibold text-[#eef4fb]">
             <Image
-              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(post.author.name)}&background=1f2d39&color=ffffff`}
+              src={
+                post.author.avatar ??
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(post.author.name)}&background=1f2d39&color=ffffff`
+              }
               alt={post.author.name}
               width={44}
               height={44}
@@ -211,13 +278,19 @@ export function FeedCard({
       ) : null}
 
       <div className={cn('mt-4 flex items-center gap-6 text-[12px] text-[#c3cdd7]', isProfile && 'px-1')}>
-        <button className="inline-flex items-center gap-2 text-[#20d09d] transition hover:text-[#4ce0b4]">
+        <button
+          onClick={() => void handleReaction()}
+          className={cn(
+            'inline-flex items-center gap-2 transition',
+            liked ? 'text-[#4ce0b4]' : 'text-[#20d09d] hover:text-[#4ce0b4]'
+          )}
+        >
           <Sparkles className="h-4 w-4" />
-          Like
+          Like {likes > 0 ? likes : ''}
         </button>
         <button className="inline-flex items-center gap-2 transition hover:text-white">
           <MessageCircle className="h-4 w-4" />
-          {expanded ? 'Comment' : 'Comment'}
+          Comment {post.comments > 0 || comments.length > 0 ? comments.length || post.comments : ''}
         </button>
       </div>
 
@@ -226,17 +299,27 @@ export function FeedCard({
           <p className="text-[12px] font-semibold text-[#1ed39b]">Comments</p>
 
           <div className="mt-4 space-y-4">
+            {loadingComments ? (
+              <div className="flex items-center gap-2 text-[12px] text-[#9fb0c1]">
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+                Loading comments
+              </div>
+            ) : null}
+
             {comments.map((comment) => (
               <div
                 key={comment.id}
                 className={cn(
                   'border-b border-white/8 pb-4 last:border-b-0 last:pb-0',
-                  comment.primary && 'rounded-[14px] bg-[#26323d] p-4'
+                  comments[0]?.id === comment.id && 'rounded-[14px] bg-[#26323d] p-4'
                 )}
               >
                 <div className="flex gap-3">
                   <Image
-                    src={comment.avatar}
+                    src={
+                      comment.avatar ??
+                      `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.author)}&background=1f2d39&color=ffffff`
+                    }
                     alt={comment.author}
                     width={34}
                     height={34}
@@ -251,18 +334,22 @@ export function FeedCard({
                       {comment.text}
                     </p>
 
-                    {comment.primary ? (
+                    {comments[0]?.id === comment.id ? (
                       <div className="mt-4 border-t border-white/12 pt-4">
                         <div className="flex items-center gap-3 rounded-[8px] border border-white/10 bg-[#1d2833] px-3 py-2">
                           <Send className="h-4 w-4 text-[#96a5b5]" />
                           <input
-                            readOnly
-                            value=""
+                            value={commentDraft}
+                            onChange={(event) => setCommentDraft(event.target.value)}
                             placeholder="Write a reply..."
                             className="h-8 flex-1 bg-transparent text-[12px] text-[#eef4fb] outline-none placeholder:text-[#7f90a2]"
                           />
-                          <button className="rounded-[6px] bg-[#19b98f] px-3 py-2 text-[11px] font-semibold text-white">
-                            Post Comment
+                          <button
+                            onClick={() => void handleComment()}
+                            disabled={submittingComment || !commentDraft.trim()}
+                            className="rounded-[6px] bg-[#19b98f] px-3 py-2 text-[11px] font-semibold text-white disabled:opacity-50"
+                          >
+                            {submittingComment ? 'Posting...' : 'Post Comment'}
                           </button>
                         </div>
                       </div>
@@ -276,7 +363,7 @@ export function FeedCard({
                           <MessageCircle className="h-4 w-4" />
                           Reply
                         </button>
-                        <span className="text-[#95a3b4]">5 min ago</span>
+                        <span className="text-[#95a3b4]">{formatDateTime(comment.createdAt)}</span>
                       </div>
                     )}
                   </div>

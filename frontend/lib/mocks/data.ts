@@ -226,7 +226,7 @@ export const mockWinLoss: WinLoss = {
 export const mockPosts: CommunityPost[] = [
   {
     id: 'p1',
-    author: { name: 'Siddha9912', handle: '@sidha9912', avatar: 'S' },
+    author: { id: 'user-1', name: 'Siddha9912', handle: '@sidha9912', avatar: null },
     tradeId: 'grp-eth-01',
     title: 'Long ETH',
     summary: 'Interesting setup. I see your reasoning for entering the ETH breakout, but what made you hold past the 3,500 resistance level?',
@@ -236,7 +236,7 @@ export const mockPosts: CommunityPost[] = [
   },
   {
     id: 'p2',
-    author: { name: 'Trade Monk', handle: '@trademonk', avatar: 'T' },
+    author: { id: 'user-2', name: 'Trade Monk', handle: '@trademonk', avatar: null },
     tradeId: 'grp-btc-03',
     title: 'Runner management on BTC',
     summary: 'Booked one partial into extension and left a reduced runner. Curious how others manage overnight crypto exposure.',

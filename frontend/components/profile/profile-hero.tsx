@@ -1,7 +1,13 @@
 import Image from 'next/image';
 import { Bell, Globe2 } from 'lucide-react';
+import type { UserProfile } from '@/lib/api/types';
 
-export function ProfileHero() {
+export function ProfileHero({ profile }: { profile?: UserProfile | null }) {
+  const handle = profile?.handle ?? '@Siddha9912';
+  const activeSince = profile?.activeSince ?? '2021';
+  const avatar = profile?.avatarUrl ?? 'https://images.unsplash.com/photo-1542909168-82c3e7fdca5c?auto=format&fit=crop&w=200&q=80';
+  const cover = profile?.coverUrl ?? 'https://images.unsplash.com/photo-1516321497487-e288fb19713f?auto=format&fit=crop&w=1600&q=80';
+  const stats = profile?.stats ?? { trades: 300, following: 21, followers: 109, published: 1 };
   return (
     <div className="overflow-hidden rounded-[22px] border border-[#273543] bg-[#171f28]">
       <div className="flex h-12 items-center justify-between border-b border-white/6 bg-[#1b232d] px-5">
@@ -16,7 +22,7 @@ export function ProfileHero() {
 
       <div className="relative h-[190px] overflow-hidden">
         <Image
-          src="https://images.unsplash.com/photo-1516321497487-e288fb19713f?auto=format&fit=crop&w=1600&q=80"
+          src={cover}
           alt="Profile cover"
           fill
           unoptimized
@@ -28,8 +34,8 @@ export function ProfileHero() {
       <div className="relative px-6 pb-6 pt-4">
         <div className="absolute -top-14 left-6 h-24 w-24 overflow-hidden rounded-full border-[3px] border-[#d8e1ea]/20 bg-[#24303b] shadow-[0_18px_35px_rgba(0,0,0,0.35)]">
           <Image
-            src="https://images.unsplash.com/photo-1542909168-82c3e7fdca5c?auto=format&fit=crop&w=200&q=80"
-            alt="Siddha9912"
+            src={avatar}
+            alt={handle}
             fill
             unoptimized
             className="object-cover"
@@ -45,8 +51,8 @@ export function ProfileHero() {
         <div className="mt-4 flex flex-col gap-4 border-b border-white/8 pb-5 md:flex-row md:items-end md:justify-between">
           <div className="pl-[110px]">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-[16px] font-semibold text-white">@Siddha9912</p>
-              <p className="text-[11px] text-[#95a3b4]">Active since 2021</p>
+              <p className="text-[16px] font-semibold text-white">{handle}</p>
+              <p className="text-[11px] text-[#95a3b4]">Active since {activeSince}</p>
               <span className="text-[#536273]">/</span>
               <span className="inline-flex items-center gap-1 text-[11px] text-[#95a3b4]">
                 <Globe2 className="h-3.5 w-3.5" />
@@ -56,9 +62,9 @@ export function ProfileHero() {
 
             <div className="mt-4 flex gap-8">
               {[
-                ['Trades', '300'],
-                ['Following', '21'],
-                ['Followers', '109'],
+                ['Trades', String(stats.trades)],
+                ['Following', String(stats.following)],
+                ['Followers', String(stats.followers)],
               ].map(([label, value]) => (
                 <div key={label}>
                   <p className="text-[10px] text-[#8293a3]">{label}</p>
