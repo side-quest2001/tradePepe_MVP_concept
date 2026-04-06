@@ -12,6 +12,12 @@ import { buildSuccessResponse } from "./utils/error-response.util.js";
 
 export function createApp() {
   const app = express();
+  const allowedOrigins =
+    env.CORS_ORIGIN === "*"
+      ? true
+      : env.CORS_ORIGIN.split(",")
+          .map((origin) => origin.trim())
+          .filter(Boolean);
 
   app.set("trust proxy", env.TRUST_PROXY === "true");
   app.use(requestLogger);
@@ -19,7 +25,7 @@ export function createApp() {
   app.use(helmet());
   app.use(
     cors({
-      origin: env.CORS_ORIGIN
+      origin: allowedOrigins
     })
   );
   app.use(express.json({ limit: "1mb" }));
