@@ -1,6 +1,6 @@
 # TradePepe API
 
-Base URL: `http://localhost:3000/api/v1`
+Base URL: `http://localhost:4000/api/v1`
 
 Success responses use:
 
@@ -28,6 +28,52 @@ Error responses use:
 ### `GET /health`
 
 Returns application health status.
+
+## Auth
+
+### `POST /auth/signup`
+
+Creates a new application user and returns:
+- `user`
+- `accessToken`
+- `refreshToken`
+- `expiresIn`
+
+### `POST /auth/signin`
+
+Signs in an existing user and returns:
+- `user`
+- `accessToken`
+- `refreshToken`
+- `expiresIn`
+
+### `POST /auth/refresh`
+
+Refreshes an access session from `refreshToken`.
+
+### `POST /auth/forgot-password`
+
+Starts the password reset flow for an email address. In local/dev mode, the response also returns a preview reset token.
+
+### `POST /auth/reset-password`
+
+Resets the password using a valid reset token and revokes existing sessions.
+
+### `POST /auth/verify-email/request`
+
+Requires bearer access token. Generates a fresh email verification token for the signed-in user.
+
+### `POST /auth/verify-email/confirm`
+
+Marks a user email as verified from a valid verification token.
+
+### `POST /auth/signout`
+
+Requires bearer access token. Revokes the provided refresh token or all sessions for the current user.
+
+### `GET /auth/me`
+
+Requires bearer access token. Returns current authenticated user identity.
 
 ## Imports
 
@@ -299,6 +345,65 @@ Returns the current published trade payload if present.
 ### `PATCH /order-groups/:id/publish`
 
 Updates title, summary, and existing share payload fields without duplicating publish records.
+
+## Community
+
+### `GET /community/feed`
+
+Returns published trade cards for the community feed with:
+- `id`
+- `tradeId`
+- `title`
+- `summary`
+- `likes`
+- `comments`
+- `createdAt`
+- `author`
+
+### `GET /community/posts/:id/comments`
+
+Returns comments for one published trade.
+
+### `POST /community/posts/:id/comments`
+
+Requires bearer access token. Creates a comment.
+
+### `POST /community/posts/:id/reactions`
+
+Requires bearer access token. Toggles a like/reaction for the current user.
+
+## Profiles
+
+### `GET /profiles/me`
+
+Requires bearer access token. Returns the current user profile with stats.
+
+### `GET /profiles/:handle`
+
+Returns a public profile by handle.
+
+### `POST /profiles/:id/follow`
+
+Requires bearer access token. Toggles follow state for the current user.
+
+## Market
+
+### `GET /market/flash-news`
+
+Returns dashboard-ready flash news cards.
+
+Behavior:
+- uses backend-managed provider data when configured
+- falls back to local seeded data when provider keys are missing or upstream fails
+- current free-tier-friendly provider path is designed for Alpha Vantage normalization
+
+### `GET /market/economic-indicators`
+
+Returns dashboard-ready economic indicator rows.
+
+Behavior:
+- uses backend-managed provider data when configured
+- falls back to local seeded data when provider keys are missing or upstream fails
 
 ## Chart
 

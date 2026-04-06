@@ -1,6 +1,8 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const validId = "11111111-1111-4111-8111-111111111111";
+
 const resourceServiceMock = {
   listTags: vi.fn(),
   createTag: vi.fn(),
@@ -18,9 +20,19 @@ vi.mock("../src/services/resource.service.js", () => ({
   resourceService: resourceServiceMock
 }));
 
-const { createApp } = await import("../src/app.js");
+vi.mock("../src/middlewares/auth.middleware.js", () => ({
+  requireAuth: (req: { authUser?: unknown }, _res: unknown, next: () => void) => {
+    req.authUser = {
+      id: validId,
+      email: "pepe@tradepepe.dev",
+      name: "Siddha PePe",
+      handle: "@siddhapepe"
+    };
+    next();
+  }
+}));
 
-const validId = "11111111-1111-4111-8111-111111111111";
+const { createApp } = await import("../src/app.js");
 
 describe("Resource API", () => {
   beforeEach(() => {

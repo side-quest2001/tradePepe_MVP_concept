@@ -103,7 +103,7 @@ export const addOrderGroupReviewTag = asyncHandler(async (req: Request, res: Res
 export const publishOrderGroup = asyncHandler(async (req: Request, res: Response) => {
   const params = orderGroupIdParamSchema.parse(req.params);
   const payload = publishTradeGroupSchema.parse(req.body);
-  const result = await journalService.publishTradeGroup(params.id, payload);
+  const result = await journalService.publishTradeGroup(params.id, payload, req.authUser?.id ?? null);
 
   res.status(201).json(buildSuccessResponse(result));
 });
@@ -118,7 +118,7 @@ export const getPublishedOrderGroup = asyncHandler(async (req: Request, res: Res
 export const patchPublishedOrderGroup = asyncHandler(async (req: Request, res: Response) => {
   const params = orderGroupIdParamSchema.parse(req.params);
   const payload = patchPublishSchema.parse(req.body);
-  const result = await journalService.updatePublishedTradeGroup(params.id, payload);
+  const result = await journalService.updatePublishedTradeGroup(params.id, payload, req.authUser?.id ?? null);
 
   res.status(200).json(buildSuccessResponse(result));
 });

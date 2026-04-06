@@ -16,6 +16,7 @@ import {
   uuid,
   varchar
 } from "drizzle-orm/pg-core";
+import { users } from "./app.schema.js";
 
 const createdAt = timestamp("created_at", { withTimezone: true }).defaultNow().notNull();
 const updatedAt = timestamp("updated_at", { withTimezone: true }).defaultNow().notNull();
@@ -227,7 +228,10 @@ export const tradeNotes = pgTable(
       .references(() => orderGroups.id, { onDelete: "cascade", onUpdate: "cascade" }),
     noteType: noteTypeEnum("note_type").notNull().default("general"),
     content: text("content").notNull(),
-    createdByUserId: uuid("created_by_user_id"),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+      onUpdate: "cascade"
+    }),
     createdAt,
     updatedAt
   },
@@ -297,6 +301,10 @@ export const sharedTradeGroups = pgTable(
     orderGroupId: uuid("order_group_id")
       .notNull()
       .references(() => orderGroups.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+      onUpdate: "cascade"
+    }),
     publicId: varchar("public_id", { length: 64 }).notNull(),
     status: shareStatusEnum("status").notNull().default("draft"),
     title: varchar("title", { length: 160 }),

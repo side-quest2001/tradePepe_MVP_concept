@@ -3,6 +3,14 @@ import { count } from "drizzle-orm";
 import { logger } from "../config/logger.js";
 import { db, queryClient } from "./client.js";
 import {
+  communityComments,
+  communityReactions,
+  economicIndicatorRows,
+  flashNewsItems,
+  profileFollows,
+  users
+} from "./schema/app.schema.js";
+import {
   funds,
   orderGroupOrders,
   orderGroupReviewTags,
@@ -13,9 +21,14 @@ import {
   tradeNotes,
   tradeTags
 } from "./schema/trading.schema.js";
+import { hashPassword } from "../utils/password.util.js";
 
 const seedFundAlphaId = "11111111-1111-4111-8111-111111111111";
 const seedFundSwingId = "22222222-2222-4222-8222-222222222222";
+const seedUserPepeId = "11111111-1111-4111-8111-111111111111";
+const seedUserFlyingId = "22222222-2222-4222-8222-222222222222";
+const seedUserRoundhogId = "33333333-3333-4333-8333-333333333333";
+const defaultPasswordHash = hashPassword("TradePePe123!");
 
 const tagIds = {
   breakout: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
@@ -79,6 +92,45 @@ async function seed(): Promise<void> {
   }
 
   await db.transaction(async (tx) => {
+    await tx.insert(users).values([
+      {
+        id: seedUserPepeId,
+        email: "pepe@tradepepe.dev",
+        passwordHash: defaultPasswordHash,
+        name: "Siddha PePe",
+        handle: "@siddhapepe",
+        avatarUrl: "https://images.unsplash.com/photo-1542909168-82c3e7fdca5c?auto=format&fit=crop&w=200&q=80",
+        coverUrl: "https://images.unsplash.com/photo-1516321497487-e288fb19713f?auto=format&fit=crop&w=1600&q=80",
+        activeSince: "2021",
+        bio: "Execution-first trader building a cleaner review process every month.",
+        emailVerifiedAt: new Date("2026-01-15T10:00:00.000Z")
+      },
+      {
+        id: seedUserFlyingId,
+        email: "flyingtrader11@tradepepe.dev",
+        passwordHash: defaultPasswordHash,
+        name: "Flyingtrader11",
+        handle: "@flyingtrader11",
+        avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
+        coverUrl: null,
+        activeSince: "2022",
+        bio: "Sharing breakout reviews and runner management notes.",
+        emailVerifiedAt: new Date("2026-01-16T10:00:00.000Z")
+      },
+      {
+        id: seedUserRoundhogId,
+        email: "roundhog34@tradepepe.dev",
+        passwordHash: defaultPasswordHash,
+        name: "Roundhog34",
+        handle: "@roundhog34",
+        avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=64&q=80",
+        coverUrl: null,
+        activeSince: "2023",
+        bio: "Mostly intraday and index options.",
+        emailVerifiedAt: new Date("2026-01-17T10:00:00.000Z")
+      }
+    ]);
+
     await tx.insert(funds).values([
       {
         id: seedFundAlphaId,
@@ -681,6 +733,7 @@ async function seed(): Promise<void> {
       {
         id: "40000000-0000-4000-8000-000000000001",
         orderGroupId: "20000000-0000-4000-8000-000000000001",
+        createdByUserId: seedUserPepeId,
         publicId: "tradepepe-seed-nifty-breakout",
         status: "published",
         title: "NIFTY Opening Range Breakout",
@@ -689,6 +742,92 @@ async function seed(): Promise<void> {
         snapshot: {
           featured: true
         }
+      }
+    ]);
+
+    await tx.insert(profileFollows).values([
+      { followerUserId: seedUserFlyingId, targetUserId: seedUserPepeId },
+      { followerUserId: seedUserRoundhogId, targetUserId: seedUserPepeId },
+      { followerUserId: seedUserPepeId, targetUserId: seedUserFlyingId }
+    ]);
+
+    await tx.insert(communityComments).values([
+      {
+        id: "50000000-0000-4000-8000-000000000001",
+        postId: "40000000-0000-4000-8000-000000000001",
+        authorUserId: seedUserRoundhogId,
+        content: "Impressive execution! Did you monitor order flow data to confirm the breakout, or was this purely based on the price action?"
+      },
+      {
+        id: "50000000-0000-4000-8000-000000000002",
+        postId: "40000000-0000-4000-8000-000000000001",
+        authorUserId: seedUserFlyingId,
+        content: "Thanks for sharing this. The management around the add and the exit timing was very clean."
+      }
+    ]);
+
+    await tx.insert(communityReactions).values([
+      { postId: "40000000-0000-4000-8000-000000000001", userId: seedUserFlyingId },
+      { postId: "40000000-0000-4000-8000-000000000001", userId: seedUserRoundhogId }
+    ]);
+
+    await tx.insert(flashNewsItems).values([
+      {
+        title: "Broader Market News",
+        summary: "Nifty IT index drops 2% as US tech stocks face selloff; TCS and Infosys lead declines.",
+        source: "Market Desk",
+        sortOrder: 1
+      },
+      {
+        title: "RBI Repo Rate",
+        summary: "RBI keeps repo rate unchanged at 6.50%; maintains withdrawal of accommodation stance.",
+        source: "Macro Wire",
+        sortOrder: 2
+      },
+      {
+        title: "FII/DII Flows",
+        summary: "Foreign funds turn net sellers while domestic institutions cushion broader market volatility.",
+        source: "Flows Monitor",
+        sortOrder: 3
+      }
+    ]);
+
+    await tx.insert(economicIndicatorRows).values([
+      {
+        country: "India",
+        indicator: "Manufacturing PMI",
+        september: "57.5",
+        october: "57.4",
+        november: "56.9",
+        december: "56.7",
+        sortOrder: 1
+      },
+      {
+        country: "India",
+        indicator: "Services PMI",
+        september: "58.1",
+        october: "58.5",
+        november: "58.8",
+        december: "59.2",
+        sortOrder: 2
+      },
+      {
+        country: "USA",
+        indicator: "Inflation Rate",
+        september: "3.1",
+        october: "3.2",
+        november: "3.1",
+        december: "3.0",
+        sortOrder: 3
+      },
+      {
+        country: "USA",
+        indicator: "GDP Growth Rate",
+        september: "2.8",
+        october: "2.9",
+        november: "2.9",
+        december: "2.7",
+        sortOrder: 4
       }
     ]);
   });

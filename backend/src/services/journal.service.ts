@@ -162,7 +162,7 @@ export class JournalService {
     return this.assignTag(orderGroupId, input, "review");
   }
 
-  async publishTradeGroup(orderGroupId: string, input: PublishTradeGroupInput) {
+  async publishTradeGroup(orderGroupId: string, input: PublishTradeGroupInput, createdByUserId?: string | null) {
     const bundle = await this.repository.getOrderGroupBundle(orderGroupId);
 
     if (!bundle) {
@@ -171,6 +171,7 @@ export class JournalService {
 
     const sharedTrade = await this.repository.publishTradeGroup({
       orderGroupId,
+      createdByUserId: createdByUserId ?? null,
       publicId: randomUUID(),
       status: "published",
       title: input.title ?? `${bundle.group.symbol} ${bundle.group.positionType.toUpperCase()} trade`,
@@ -199,7 +200,7 @@ export class JournalService {
     return bundle.publishedTrade ?? null;
   }
 
-  async updatePublishedTradeGroup(orderGroupId: string, input: PatchPublishInput) {
+  async updatePublishedTradeGroup(orderGroupId: string, input: PatchPublishInput, createdByUserId?: string | null) {
     const bundle = await this.repository.getOrderGroupBundle(orderGroupId);
 
     if (!bundle) {
@@ -209,6 +210,7 @@ export class JournalService {
     const current = bundle.publishedTrade;
     const updated = await this.repository.publishTradeGroup({
       orderGroupId,
+      createdByUserId: current?.createdByUserId ?? createdByUserId ?? null,
       publicId: current?.publicId ?? randomUUID(),
       status: input.status ?? current?.status ?? "draft",
       title: input.title ?? current?.title ?? `${bundle.group.symbol} trade`,

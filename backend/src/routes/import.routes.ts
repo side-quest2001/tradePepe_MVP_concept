@@ -2,6 +2,7 @@ import multer from "multer";
 import { Router } from "express";
 
 import { uploadBrokerCsv } from "../controllers/import.controller.js";
+import { requireAuth } from "../middlewares/auth.middleware.js";
 import { createRateLimitMiddleware } from "../middlewares/rate-limit.middleware.js";
 import { ApiError } from "../utils/api-error.js";
 
@@ -32,7 +33,7 @@ const upload = multer({
 
 const importRouter = Router();
 
-importRouter.post("/csv", createRateLimitMiddleware({ keyPrefix: "import-csv", maxRequests: 10 }), upload.single("file"), uploadBrokerCsv);
-importRouter.post("/orders/csv", createRateLimitMiddleware({ keyPrefix: "import-orders-csv", maxRequests: 10 }), upload.single("file"), uploadBrokerCsv);
+importRouter.post("/csv", requireAuth, createRateLimitMiddleware({ keyPrefix: "import-csv", maxRequests: 10 }), upload.single("file"), uploadBrokerCsv);
+importRouter.post("/orders/csv", requireAuth, createRateLimitMiddleware({ keyPrefix: "import-orders-csv", maxRequests: 10 }), upload.single("file"), uploadBrokerCsv);
 
 export { importRouter };
