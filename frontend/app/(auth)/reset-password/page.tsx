@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { resetPasswordRequest } from '@/lib/api/auth-client';
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const [token, setToken] = useState(searchParams.get('token') ?? '');
   const [password, setPassword] = useState('');
@@ -75,5 +75,22 @@ export default function ResetPasswordPage() {
         Back to sign in
       </Link>
     </div>
+  );
+}
+
+function ResetPasswordFallback() {
+  return (
+    <div className="w-full max-w-[480px] rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,#162432,#101a24)] p-8 shadow-[0_30px_80px_rgba(0,0,0,0.28)]">
+      <p className="text-[24px] font-semibold text-white">Choose a new password</p>
+      <p className="mt-3 text-[14px] leading-7 text-[#8ba0b4]">Loading reset form...</p>
+    </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<ResetPasswordFallback />}>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }
