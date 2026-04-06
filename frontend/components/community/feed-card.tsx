@@ -12,9 +12,11 @@ import {
 import { useEffect, useState } from 'react';
 import { CommunityPost, OrderGroup } from '@/lib/api/types';
 import {
+  buildMirrorRows,
   formatCompactPrice,
   formatLedgerDate,
   formatLedgerTime,
+  getToneClasses,
 } from '@/components/journal/grouped-trade-card.helpers';
 import { Panel } from '@/components/ui/panel';
 import { formatDateTime } from '@/lib/utils/format';
@@ -36,23 +38,31 @@ type FeedCardProps = {
 
 function Chip({
   label,
-  color,
+  toneClass,
 }: {
   label: string;
-  color: string;
+  toneClass: string;
 }) {
   return (
     <span
-      className="inline-flex min-w-[72px] items-center justify-center rounded-[4px] px-2 py-[3px] text-[9px] font-semibold text-white"
-      style={{ backgroundColor: color }}
+      className={`inline-flex min-w-[72px] items-center justify-center rounded-[4px] px-2 py-[3px] text-[9px] font-semibold ${toneClass}`}
     >
       {label}
     </span>
   );
 }
 
+function toNumber(value: number | string | null | undefined) {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
 function EmbeddedTradeTable({ group }: { group: OrderGroup }) {
-  const executions = [...group.entryOrders, ...group.exitOrders].slice(0, 3);
+  const rows = buildMirrorRows(group).slice(0, 3);
 
   return (
     <div className="overflow-hidden rounded-[10px] border border-[#334252] bg-[#25323e] shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
@@ -65,26 +75,13 @@ function EmbeddedTradeTable({ group }: { group: OrderGroup }) {
         ))}
       </div>
 
-      {executions.map((execution, index) => {
-        const setupColor =
-          execution.setup === 'Retrace'
-            ? '#2d77b7'
-            : execution.setup === 'Opening Range'
-              ? '#0b9f8a'
-              : '#b57a31';
-        const reviewColor =
-          execution.review === 'Early Exit'
-            ? '#93712b'
-            : execution.review === 'FOMO'
-              ? '#8a3437'
-              : '#2d8f63';
-
+      {rows.map((row, index) => {
         return (
           <div
-            key={execution.id}
+            key={row.id}
             className={cn(
               'grid grid-cols-[10px_0.95fr_0.9fr_0.6fr_0.8fr_1fr_1fr_0.8fr_0.9fr_1fr_1fr_0.8fr_0.6fr_0.9fr_0.95fr] items-center',
-              index !== executions.length - 1 && 'border-t border-white/8'
+              index !== rows.length - 1 && 'border-t border-white/8'
             )}
           >
             <div className="flex justify-center">
@@ -96,51 +93,63 @@ function EmbeddedTradeTable({ group }: { group: OrderGroup }) {
               />
             </div>
             <div className="px-2 py-[8px] text-center text-[10px] text-[#dfe7ee]">
-              {formatLedgerDate(execution.executedAt)}
+              {row.left ? formatLedgerDate(row.left.executedAt) : '--'}
             </div>
             <div className="px-2 py-[8px] text-center text-[10px] text-[#dfe7ee]">
-              {formatLedgerTime(execution.executedAt)}
+              {row.left ? formatLedgerTime(row.left.executedAt) : '--'}
             </div>
             <div className="px-2 py-[8px] text-center text-[10px] text-[#dfe7ee]">
-              {execution.qty}
+              {row.left ? toNumber(row.left.qty) : '--'}
             </div>
             <div className="px-2 py-[8px] text-center text-[10px] text-[#dfe7ee]">
-              {execution.symbol}
+              {row.left?.symbol ?? '--'}
             </div>
             <div className="px-2 py-[8px] text-center">
-              <Chip label={execution.setup ?? 'N/A'} color={setupColor} />
+              <Chip
+                label={row.left?.setup ?? 'N/A'}
+                toneClass={getToneClasses(row.left?.setup)}
+              />
             </div>
             <div className="px-2 py-[8px] text-center">
-              <Chip label={execution.review ?? 'N/A'} color={reviewColor} />
+              <Chip
+                label={row.left?.review ?? 'N/A'}
+                toneClass={getToneClasses(row.left?.review)}
+              />
             </div>
             <div className="px-2 py-[8px] text-center text-[10px] text-[#dfe7ee]">
-              {formatCompactPrice(execution.tradedPrice)}
+              {row.left ? formatCompactPrice(toNumber(row.left.tradedPrice)) : '--'}
             </div>
             <div
               className={cn(
                 'px-2 py-[8px] text-center text-[11px] font-semibold',
-                group.realizedPnl >= 0 ? 'text-[#25d39b]' : 'text-[#ef5350]'
+                row.result >= 0 ? 'text-[#25d39b]' : 'text-[#ef5350]'
               )}
             >
-              {index === 0 ? `$ ${Math.abs(group.realizedPnl).toLocaleString()}` : '$ 0'}
+              {row.result === 0 ? '—' : `$ ${Math.abs(row.result).toLocaleString('en-US')}`}
             </div>
             <div className="px-2 py-[8px] text-center text-[10px] text-[#dfe7ee]">
-              {formatCompactPrice(execution.tradedPrice + 500)}
+              {row.right ? formatCompactPrice(toNumber(row.right.tradedPrice)) : '--'}
             </div>
             <div className="px-2 py-[8px] text-center">
-              <Chip label="Good Entry" color="#2d8f63" />
+              <Chip
+                label={row.right?.review ?? 'N/A'}
+                toneClass={getToneClasses(row.right?.review)}
+              />
             </div>
             <div className="px-2 py-[8px] text-center">
-              <Chip label="Breakout" color="#b57a31" />
+              <Chip
+                label={row.right?.setup ?? 'N/A'}
+                toneClass={getToneClasses(row.right?.setup)}
+              />
             </div>
             <div className="px-2 py-[8px] text-center text-[10px] text-[#dfe7ee]">
-              {Math.max(1, execution.qty / 3)}
+              {row.right ? toNumber(row.right.qty) : '--'}
             </div>
             <div className="px-2 py-[8px] text-center text-[10px] text-[#dfe7ee]">
-              {formatLedgerTime(execution.executedAt)}
+              {row.right ? formatLedgerTime(row.right.executedAt) : '--'}
             </div>
             <div className="px-2 py-[8px] text-center text-[10px] text-[#dfe7ee]">
-              {formatLedgerDate(execution.executedAt)}
+              {row.right ? formatLedgerDate(row.right.executedAt) : '--'}
             </div>
           </div>
         );

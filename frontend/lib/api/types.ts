@@ -122,6 +122,7 @@ export type UserProfile = AuthUser & {
     followers: number;
     published: number;
   };
+  followingIds?: string[];
 };
 
 export type CommunityComment = {
@@ -143,6 +144,16 @@ export type FlashNewsItem = {
   summary: string;
   source: string;
   createdAt: string;
+  imageUrl: string | null;
+  articleUrl: string | null;
+};
+
+export type MediaUploadSignature = {
+  cloudName: string;
+  apiKey: string;
+  timestamp: number;
+  folder: string;
+  signature: string;
 };
 
 export type EconomicIndicatorRow = {
@@ -168,8 +179,33 @@ export type ImportHistory = {
   fundId: string;
   brokerName: string | null;
   fileName: string | null;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  totalRows: number;
+  importedRows: number;
+  skippedRows: number;
+  failedRows: number;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+};
+
+export type ImportRowError = {
+  rowNumber: number;
+  messages: string[];
+};
+
+export type ImportDetail = ImportHistory & {
+  metadata: {
+    rowErrors?: ImportRowError[];
+    error?: string;
+    details?: unknown;
+  } | null;
+};
+
+export type ImportUploadResult = {
+  importId: string;
   totalRows: number;
   importedRows: number;
   failedRows: number;
-  createdAt: string;
+  errors: ImportRowError[];
 };

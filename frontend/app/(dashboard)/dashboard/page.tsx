@@ -1,11 +1,15 @@
 import Image from 'next/image';
 import { Bell, ChevronDown, Info } from 'lucide-react';
+import { redirect } from 'next/navigation';
+import { buildDerivedAnalytics } from '@/components/analytics/analytics-helpers';
 import { DashboardEconomicSection } from '@/components/dashboard/dashboard-economic-section';
 import { DashboardPerformanceSection } from '@/components/dashboard/dashboard-performance-section';
 import { Panel } from '@/components/ui/panel';
 import {
   getEconomicIndicators,
   getFlashNews,
+  getImports,
+  getOrderGroups,
   getPerformanceCalendar,
   getPnlSeries,
   getSummary,
@@ -47,8 +51,8 @@ function TopMetricCard({
   title: string;
   menu: string;
   value: string;
-  change: string;
-  changeColor: string;
+  change?: string | null;
+  changeColor?: string;
   visual: React.ReactNode;
 }) {
   return (
@@ -66,7 +70,7 @@ function TopMetricCard({
       <div className="mt-2 flex items-end justify-between gap-4">
         <div className="flex items-end gap-3">
           <div className="text-[22px] font-semibold leading-none text-[#f5f8fc]">{value}</div>
-          <div className={`pb-[3px] text-[13px] font-semibold ${changeColor}`}>{change}</div>
+          {change ? <div className={`pb-[3px] text-[13px] font-semibold ${changeColor ?? 'text-[#1fcf98]'}`}>{change}</div> : null}
         </div>
         <div className="shrink-0">{visual}</div>
       </div>
@@ -79,7 +83,7 @@ function TopWinRateCard({
   change,
 }: {
   value: number;
-  change: string;
+  change?: string | null;
 }) {
   const circumference = 2 * Math.PI * 26;
   const dashOffset = circumference * (1 - value / 100);
@@ -99,7 +103,7 @@ function TopWinRateCard({
       <div className="mt-2 flex items-end justify-between gap-4">
         <div className="flex items-end gap-3">
           <div className="text-[22px] font-semibold leading-none text-[#f5f8fc]">{value} %</div>
-          <div className="pb-[3px] text-[13px] font-semibold text-[#21cf98]">{change}</div>
+          {change ? <div className="pb-[3px] text-[13px] font-semibold text-[#21cf98]">{change}</div> : null}
         </div>
         <div className="flex h-[66px] w-[66px] shrink-0 items-center justify-center">
           <svg viewBox="0 0 64 64" className="h-[64px] w-[64px] -rotate-90">
@@ -123,14 +127,30 @@ function TopWinRateCard({
 }
 
 export default async function DashboardPage() {
-  const [summary, calendar, pnlSeries, winLoss, flashNews, economicIndicators] = await Promise.all([
+  const [imports, summary, calendar, pnlSeries, winLoss, flashNews, economicIndicators, orderGroups] = await Promise.all([
+    getImports().catch(() => []),
     getSummary(),
     getPerformanceCalendar(),
     getPnlSeries(),
     getWinLoss(),
     getFlashNews().catch(() => []),
     getEconomicIndicators().catch(() => []),
+    getOrderGroups().catch(() => []),
   ]);
+
+  if (imports.length === 0 || orderGroups.length === 0) {
+    redirect('/journal?import=1&onboarding=csv');
+  }
+
+  const derived = buildDerivedAnalytics(summary, pnlSeries, calendar, winLoss, orderGroups);
+  const totalCapitalChange =
+    derived.dashboardCards.totalCapitalDelta !== null
+      ? `${Math.abs(derived.dashboardCards.totalCapitalDelta)}% ${derived.dashboardCards.totalCapitalDelta >= 0 ? '↑' : '↓'}`
+      : null;
+  const maxLossChange =
+    derived.dashboardCards.maxLossDelta !== null
+      ? `${Math.abs(derived.dashboardCards.maxLossDelta)}% ${derived.dashboardCards.maxLossDelta >= 0 ? '↑' : '↓'}`
+      : null;
 
   return (
     <div className="space-y-6">
@@ -155,9 +175,13 @@ export default async function DashboardPage() {
           <TopMetricCard
             title="Total Capital"
             menu="All Time"
-            value="$ 81000"
-            change="19% ↑"
-            changeColor="text-[#1fcf98]"
+            value={new Intl.NumberFormat('en-US', {
+              style: 'currency',
+              currency: 'USD',
+              maximumFractionDigits: 0,
+            }).format(summary.totalRealizedPnl)}
+            change={totalCapitalChange}
+            changeColor={(derived.dashboardCards.totalCapitalDelta ?? 0) >= 0 ? 'text-[#1fcf98]' : 'text-[#da342f]'}
             visual={
               <TinySparkline
                 stroke="#00b58a"
@@ -169,9 +193,13 @@ export default async function DashboardPage() {
           <TopMetricCard
             title="Max. Loss Per Trade"
             menu="This Month"
-            value="$ 700"
-            change="3.7% ↓"
-            changeColor="text-[#da342f]"
+            value={new Intl.NumberFormat('en-US', {
+              style: 'currency',
+              currency: 'USD',
+              maximumFractionDigits: 0,
+            }).format(Math.abs(summary.maxLoss))}
+            change={maxLossChange}
+            changeColor={(derived.dashboardCards.maxLossDelta ?? 0) > 0 ? 'text-[#da342f]' : 'text-[#1fcf98]'}
             visual={
               <TinySparkline
                 stroke="#d82828"
@@ -180,14 +208,12 @@ export default async function DashboardPage() {
             }
           />
 
-          <TopWinRateCard value={Math.round(winLoss.winRate)} change="7.5% ↑" />
+          <TopWinRateCard value={Math.round(winLoss.winRate)} />
 
           <TopMetricCard
             title="Closed Trades"
             menu="This Month"
             value={`${summary.totalClosedTrades}`}
-            change="12% ↑"
-            changeColor="text-[#1fcf98]"
             visual={
               <TinySparkline
                 stroke="#15c996"
@@ -212,15 +238,26 @@ export default async function DashboardPage() {
           <div className="mt-4 space-y-4">
             {flashNews.map((item, index) => (
               <div key={item.title}>
-                <div className="flex gap-3">
-                  <Image
-                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(item.source)}&background=1e2935&color=ffffff`}
-                    alt={item.title}
-                    width={40}
-                    height={40}
-                    unoptimized
-                    className="h-[40px] w-[40px] rounded-[10px] object-cover"
-                  />
+                <a
+                  href={item.articleUrl ?? undefined}
+                  target={item.articleUrl ? '_blank' : undefined}
+                  rel={item.articleUrl ? 'noreferrer' : undefined}
+                  className="flex gap-3 rounded-[12px] transition hover:bg-white/[0.03]"
+                >
+                  {item.imageUrl ? (
+                    <Image
+                      src={item.imageUrl}
+                      alt={item.title}
+                      width={40}
+                      height={40}
+                      unoptimized
+                      className="h-[40px] w-[40px] rounded-[10px] object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-[40px] w-[40px] items-center justify-center rounded-[10px] bg-[#24313e] text-[11px] font-semibold text-[#dfe7ef]">
+                      {item.source.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
                   <div className="min-w-0 flex-1">
                     <h3 className="text-[13px] font-semibold leading-5 text-[#eef4fb]">
                       {item.title}
@@ -232,7 +269,7 @@ export default async function DashboardPage() {
                       {new Date(item.createdAt).toLocaleString()}
                     </p>
                   </div>
-                </div>
+                </a>
                 {index !== flashNews.length - 1 ? (
                   <div className="mt-4 border-b border-white/12" />
                 ) : null}

@@ -54,7 +54,15 @@ export const csvImportRequestSchema = z.object({
 
 export const brokerCsvRowSchema = z.object({
   Symbol: z.string().trim().min(1, "Symbol is required").max(40).transform((value) => value.toUpperCase()),
-  "Buy/Sell": z.enum(["BUY", "SELL"]).or(z.enum(["buy", "sell"])).transform((value) => value.toLowerCase() as "buy" | "sell"),
+  "Buy/Sell": z
+    .string()
+    .trim()
+    .min(1, "Buy/Sell is required")
+    .transform((value) => value.toLowerCase())
+    .refine((value) => value === "buy" || value === "sell", {
+      message: "Buy/Sell must be either Buy or Sell"
+    })
+    .transform((value) => value as "buy" | "sell"),
   Type: z.string().trim().min(1, "Type is required").max(60),
   "Product Type": z.string().trim().min(1, "Product Type is required").max(60),
   Qty: z.string().transform((value) => parseRequiredDecimal(value, "Qty")),

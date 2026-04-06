@@ -6,7 +6,10 @@ import {
   EconomicIndicatorRow,
   FlashNewsItem,
   Fund,
+  ImportDetail,
   ImportHistory,
+  ImportUploadResult,
+  MediaUploadSignature,
   OrderGroup,
   PnlPoint,
   SummaryAnalytics,
@@ -25,6 +28,101 @@ import {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api/v1';
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === 'true';
+
+function toNumber(value: number | string | null | undefined) {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+function normalizeReturnStatus(value: string | null | undefined): OrderGroup['returnStatus'] {
+  if (value === 'profit' || value === 'win') return 'win';
+  if (value === 'loss') return 'loss';
+  return 'neutral';
+}
+
+function normalizeExecution(
+  execution: Record<string, unknown>,
+  group: Record<string, unknown>
+) {
+  const executedAt = execution.executedAt ?? execution.executionTime ?? execution.orderTime;
+  const qty = execution.qty ?? execution.executedQuantity ?? execution.quantity;
+  const tradedPrice = execution.tradedPrice;
+
+  return {
+    id: String(execution.id ?? ''),
+    executedAt: String(executedAt ?? ''),
+    symbol: String(execution.symbol ?? group.symbol ?? ''),
+    side: (execution.side === 'sell' ? 'sell' : 'buy') as 'buy' | 'sell',
+    qty: toNumber(qty as string | number | null | undefined),
+    tradedPrice: toNumber(tradedPrice as string | number | null | undefined),
+    setup: typeof execution.setup === 'string' ? execution.setup : undefined,
+    review: typeof execution.review === 'string' ? execution.review : undefined,
+  };
+}
+
+function normalizeGroup(group: Record<string, unknown>): OrderGroup {
+  const setupTags = Array.isArray(group.setupTags) ? (group.setupTags as OrderGroup['setupTags']) : [];
+  const reviewTags = Array.isArray(group.reviewTags)
+    ? (group.reviewTags as OrderGroup['reviewTags'])
+    : [];
+
+  return {
+    id: String(group.id ?? ''),
+    symbol: String(group.symbol ?? ''),
+    fundId: String(group.fundId ?? ''),
+    positionType: group.positionType === 'short' ? 'short' : 'long',
+    firstInteractionDate: String(group.firstInteractionDate ?? ''),
+    lastInteractionDate: String(group.lastInteractionDate ?? group.firstInteractionDate ?? ''),
+    remainingQuantity: toNumber(group.remainingQuantity as string | number | null | undefined),
+    realizedPnl: toNumber(group.realizedPnl as string | number | null | undefined),
+    unrealizedPnl: toNumber(group.unrealizedPnl as string | number | null | undefined),
+    returnStatus: normalizeReturnStatus(
+      typeof group.returnStatus === 'string' ? group.returnStatus : null
+    ),
+    status: group.status === 'open' ? 'open' : 'closed',
+    entryOrders: Array.isArray(group.entryOrders)
+      ? group.entryOrders.map((item) => normalizeExecution(item as Record<string, unknown>, group))
+      : [],
+    exitOrders: Array.isArray(group.exitOrders)
+      ? group.exitOrders.map((item) => normalizeExecution(item as Record<string, unknown>, group))
+      : [],
+    setupTags,
+    reviewTags,
+    notesSummary:
+      typeof group.notesSummary === 'string'
+        ? group.notesSummary
+        : typeof (group.notesSummary as { latest?: unknown } | null)?.latest === 'string'
+          ? ((group.notesSummary as { latest?: string }).latest ?? '')
+          : '',
+    brokerFees: toNumber(group.brokerFees as string | number | null | undefined),
+    charges: toNumber(group.charges as string | number | null | undefined),
+    publishedTrade:
+      group.publishedTrade && typeof group.publishedTrade === 'object'
+        ? {
+            title: String((group.publishedTrade as Record<string, unknown>).title ?? ''),
+            summary: String((group.publishedTrade as Record<string, unknown>).summary ?? ''),
+            likes: toNumber(
+              (group.publishedTrade as Record<string, unknown>).likes as
+                | string
+                | number
+                | null
+                | undefined
+            ),
+            comments: toNumber(
+              (group.publishedTrade as Record<string, unknown>).comments as
+                | string
+                | number
+                | null
+                | undefined
+            ),
+          }
+        : undefined,
+  };
+}
 
 async function fetcher<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -48,7 +146,8 @@ async function fetcher<T>(path: string, init?: RequestInit): Promise<T> {
 export async function getOrderGroups(): Promise<OrderGroup[]> {
   if (USE_MOCKS) return mockGroups;
   const data = await fetcher<{ items: OrderGroup[] } | OrderGroup[]>('/order-groups?page=1&pageSize=20');
-  return Array.isArray(data) ? data : data.items;
+  const items = Array.isArray(data) ? data : data.items;
+  return items.map((item) => normalizeGroup(item as unknown as Record<string, unknown>));
 }
 
 export async function getOrderGroup(id: string): Promise<OrderGroup> {
@@ -57,7 +156,8 @@ export async function getOrderGroup(id: string): Promise<OrderGroup> {
     if (!found) throw new Error('Trade not found');
     return found;
   }
-  return fetcher<OrderGroup>(`/order-groups/${id}`);
+  const data = await fetcher<OrderGroup>(`/order-groups/${id}`);
+  return normalizeGroup(data as unknown as Record<string, unknown>);
 }
 
 export async function getSummary(): Promise<SummaryAnalytics> {
@@ -138,6 +238,50 @@ export async function getPublicProfile(handle: string): Promise<UserProfile> {
   return fetcher<UserProfile>(`/profiles/${handle.replace(/^@/, '')}`);
 }
 
+export async function updateMyProfile(
+  token: string,
+  input: {
+    name?: string;
+    handle?: string;
+    bio?: string | null;
+    avatarUrl?: string | null;
+    coverUrl?: string | null;
+  }
+): Promise<UserProfile> {
+  return fetcher<UserProfile>('/profiles/me', {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function toggleProfileFollow(
+  targetUserId: string,
+  token: string
+): Promise<{ targetUserId: string; following: boolean }> {
+  return fetcher<{ targetUserId: string; following: boolean }>(`/profiles/${targetUserId}/follow`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export async function getProfileMediaSignature(
+  token: string,
+  kind: 'avatar' | 'cover' | 'shared-trade'
+): Promise<MediaUploadSignature> {
+  return fetcher<MediaUploadSignature>('/profiles/media/signature', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ kind }),
+  });
+}
+
 export async function getFlashNews(): Promise<FlashNewsItem[]> {
   return fetcher<FlashNewsItem[]>('/market/flash-news');
 }
@@ -150,8 +294,25 @@ export async function getFunds(): Promise<Fund[]> {
   return fetcher<Fund[]>('/funds');
 }
 
+export async function createFund(
+  input: { name: string; brokerName?: string; currency: string },
+  token: string
+): Promise<Fund> {
+  return fetcher<Fund>('/funds', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(input),
+  });
+}
+
 export async function getImports(): Promise<ImportHistory[]> {
   return fetcher<ImportHistory[]>('/imports?page=1&pageSize=20');
+}
+
+export async function getImportById(importId: string): Promise<ImportDetail> {
+  return fetcher<ImportDetail>(`/imports/${importId}`);
 }
 
 export async function uploadImportCsv(input: {
@@ -159,7 +320,7 @@ export async function uploadImportCsv(input: {
   file: File;
   fundId: string;
   brokerName?: string;
-}) {
+}): Promise<ImportUploadResult> {
   const formData = new FormData();
   formData.append('file', input.file);
   formData.append('fundId', input.fundId);
@@ -180,11 +341,5 @@ export async function uploadImportCsv(input: {
     throw new Error(payload?.error?.message ?? 'Import failed');
   }
 
-  return payload.data as {
-    importId: string;
-    totalRows: number;
-    importedRows: number;
-    failedRows: number;
-    errors: Array<{ rowNumber: number; messages: string[] }>;
-  };
+  return payload.data as ImportUploadResult;
 }

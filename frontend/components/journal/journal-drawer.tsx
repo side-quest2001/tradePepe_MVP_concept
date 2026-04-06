@@ -253,16 +253,16 @@ export function JournalDrawer({
 }: {
   open: boolean;
   expanded: boolean;
-  group: OrderGroup;
+  group?: OrderGroup;
   pnlSeries: PnlPoint[];
   onClose: () => void;
   onToggleExpanded: () => void;
 }) {
-  const [notes, setNotes] = useState(group.notesSummary);
+  const [notes, setNotes] = useState(group?.notesSummary ?? '');
 
   useEffect(() => {
-    setNotes(group.notesSummary);
-  }, [group.id, group.notesSummary]);
+    setNotes(group?.notesSummary ?? '');
+  }, [group?.id, group?.notesSummary]);
 
   const width = expanded ? 920 : 456;
   const expandedWidth = 'calc(100vw - 88px)';
@@ -275,6 +275,10 @@ export function JournalDrawer({
       })),
     [pnlSeries]
   );
+
+  if (!group) {
+    return null;
+  }
 
   return (
     <AnimatePresence>

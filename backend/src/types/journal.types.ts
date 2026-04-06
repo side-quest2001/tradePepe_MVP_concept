@@ -113,11 +113,13 @@ export interface UiOrderGroupDto {
   lastInteractionDate: Date | null;
   remainingQuantity: string;
   realizedPnl: string | null;
-  unrealizedPnl: null;
+  unrealizedPnl: string | null;
   returnStatus: "profit" | "loss" | "neutral" | null;
   status: "open" | "closed";
   entryOrders: UiOrderGroupOrderDto[];
   exitOrders: UiOrderGroupOrderDto[];
+  brokerFees: string;
+  charges: string;
   setupTags: Array<{ id: string; name: string; slug: string; color: string | null }>;
   reviewTags: Array<{ id: string; name: string; slug: string; color: string | null }>;
   notesSummary: {

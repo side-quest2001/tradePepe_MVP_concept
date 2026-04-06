@@ -1,0 +1,3 @@
+Symbol,Buy/Sell,Type,Product Type,Qty,Rem Qty,Limit Price,Stop Price,Traded Price,Status,Order Time
+AAPL,Buy,Market,CNC,100,0,,,180,Filled,06 Apr 2026 09:15:00
+AAPL,Sell,Market,CNC,100,0,,,188,Filled,06 Apr 2026 11:05:00

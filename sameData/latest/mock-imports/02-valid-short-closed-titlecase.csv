@@ -1,0 +1,3 @@
+Symbol,Buy/Sell,Type,Product Type,Qty,Rem Qty,Limit Price,Stop Price,Traded Price,Status,Order Time
+TSLA,Sell,Limit,MARGIN,50,0,242,,241.5,Filled,06 Apr 2026 10:00:00
+TSLA,Buy,Limit,MARGIN,50,0,232,,231.25,Filled,06 Apr 2026 13:10:00

@@ -1,6 +1,6 @@
 import { resourceRepository } from "../repositories/resource.repository.js";
 import { journalRepository } from "../repositories/journal.repository.js";
-import { mapFund, mapImportHistory, mapTag, mapTradeNote } from "../mappers/resource.mapper.js";
+import { mapFund, mapImportDetail, mapImportHistory, mapTag, mapTradeNote } from "../mappers/resource.mapper.js";
 import { slugify } from "../utils/slug.util.js";
 import { ApiError } from "../utils/api-error.js";
 
@@ -127,7 +127,7 @@ export class ResourceService {
       throw new ApiError(404, "Import not found");
     }
 
-    return mapImportHistory(item);
+    return mapImportDetail(item);
   }
 
   async listOrderGroupNotes(orderGroupId: string) {

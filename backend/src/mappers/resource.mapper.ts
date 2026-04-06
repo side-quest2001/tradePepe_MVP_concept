@@ -1,5 +1,5 @@
 import type { Fund, Import, SharedTradeGroup, TradeNote, TradeTag } from "../db/schema/trading.schema.js";
-import type { FundDto, ImportHistoryDto, TagDto } from "../types/resource.types.js";
+import type { FundDto, ImportDetailDto, ImportHistoryDto, TagDto } from "../types/resource.types.js";
 
 export function mapTag(tag: TradeTag): TagDto {
   return {
@@ -29,10 +29,21 @@ export function mapImportHistory(item: Import): ImportHistoryDto {
     fundId: item.fundId,
     brokerName: item.brokerName ?? null,
     fileName: item.fileName ?? null,
+    status: item.status,
     totalRows: item.totalRows,
     importedRows: item.importedRows,
+    skippedRows: item.skippedRows,
     failedRows: item.failedRows,
+    startedAt: item.startedAt,
+    completedAt: item.completedAt,
     createdAt: item.createdAt
+  };
+}
+
+export function mapImportDetail(item: Import): ImportDetailDto {
+  return {
+    ...mapImportHistory(item),
+    metadata: item.metadata ?? null
   };
 }
 

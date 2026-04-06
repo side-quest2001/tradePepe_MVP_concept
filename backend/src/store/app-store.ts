@@ -68,6 +68,8 @@ const flashNews: FlashNewsDto[] = [
     summary: "Nifty IT index drops 2% as US tech stocks face selloff; TCS and Infosys lead declines.",
     source: "Market Desk",
     createdAt: now,
+    imageUrl: null,
+    articleUrl: null,
   },
   {
     id: randomUUID(),
@@ -75,6 +77,8 @@ const flashNews: FlashNewsDto[] = [
     summary: "RBI keeps repo rate unchanged at 6.50%; maintains withdrawal of accommodation stance.",
     source: "Macro Wire",
     createdAt: now,
+    imageUrl: null,
+    articleUrl: null,
   },
   {
     id: randomUUID(),
@@ -82,6 +86,8 @@ const flashNews: FlashNewsDto[] = [
     summary: "Foreign funds turn net sellers while domestic institutions cushion broader market volatility.",
     source: "Flows Monitor",
     createdAt: now,
+    imageUrl: null,
+    articleUrl: null,
   },
 ];
 

@@ -68,6 +68,26 @@ export class AuthRepository {
     return results[0] ?? null;
   }
 
+  async updateUserProfile(
+    userId: string,
+    input: Partial<Pick<User, "name" | "handle" | "bio" | "avatarUrl" | "coverUrl">>
+  ) {
+    const results = await this.executor
+      .update(users)
+      .set({
+        ...input,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+
+    return results[0] ?? null;
+  }
+
+  async listUsers(limit = 20): Promise<User[]> {
+    return this.executor.select().from(users).orderBy(desc(users.createdAt)).limit(limit);
+  }
+
   async createSession(input: NewAuthSession): Promise<AuthSession> {
     const results = await this.executor.insert(authSessions).values(input).returning();
     return results[0];

@@ -71,7 +71,9 @@ export class MarketService {
       title: item.title,
       summary: item.summary,
       source: item.source,
-      createdAt: item.createdAt.toISOString()
+      createdAt: item.createdAt.toISOString(),
+      imageUrl: item.imageUrl ?? null,
+      articleUrl: null
     }));
   }
 

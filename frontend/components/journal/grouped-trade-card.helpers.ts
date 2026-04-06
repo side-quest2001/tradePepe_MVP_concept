@@ -37,7 +37,7 @@ export function formatCompactCurrency(value: number) {
 
 export function getToneClasses(
   label?: string,
-  fallback?: 'neutral' | 'success' | 'warning' | 'danger'
+  fallback?: 'neutral' | 'success' | 'danger'
 ) {
   const value = label?.toLowerCase() ?? '';
 
@@ -46,29 +46,30 @@ export function getToneClasses(
     (value.includes('good')
       ? 'success'
       : value.includes('break')
-        ? 'warning'
+        ? 'success'
         : value.includes('retrace') || value.includes('range')
           ? 'neutral'
           : value.includes('early')
-            ? 'warning'
+            ? 'neutral'
             : value.includes('sl') || value.includes('fomo')
               ? 'danger'
               : 'neutral');
 
   if (tone === 'success') return 'bg-emerald-500/18 text-emerald-300';
-  if (tone === 'warning') return 'bg-amber-500/18 text-amber-300';
   if (tone === 'danger') return 'bg-rose-500/18 text-rose-300';
-  return 'bg-sky-500/18 text-sky-200';
+  return 'bg-slate-500/18 text-slate-200';
 }
 
 export function buildMirrorRows(group: OrderGroup): GroupedTradeRow[] {
-  const executions = [...group.entryOrders, ...group.exitOrders].sort(
+  const leftRows = [...group.entryOrders].sort(
     (a, b) => new Date(a.executedAt).getTime() - new Date(b.executedAt).getTime()
   );
-
-  const leftRows = executions;
-  const rightRows = [...executions].reverse();
-  const maxRows = Math.max(leftRows.length, 1);
+  const rightRows = [...group.exitOrders].sort(
+    (a, b) => new Date(a.executedAt).getTime() - new Date(b.executedAt).getTime()
+  );
+  const maxRows = Math.max(leftRows.length, rightRows.length, 1);
+  const totalExitQuantity = rightRows.reduce((sum, execution) => sum + execution.qty, 0);
+  let allocatedResult = 0;
 
   return Array.from({ length: maxRows }).map((_, index) => {
     const left = leftRows[index];
@@ -76,12 +77,15 @@ export function buildMirrorRows(group: OrderGroup): GroupedTradeRow[] {
 
     let result = 0;
 
-    if (index === 0 && group.unrealizedPnl !== 0 && maxRows > 1) {
+    if (right && totalExitQuantity > 0 && group.realizedPnl !== 0) {
+      if (index === rightRows.length - 1) {
+        result = group.realizedPnl - allocatedResult;
+      } else {
+        result = Number(((group.realizedPnl * right.qty) / totalExitQuantity).toFixed(2));
+        allocatedResult += result;
+      }
+    } else if (!rightRows.length && index === 0 && group.unrealizedPnl !== 0) {
       result = group.unrealizedPnl;
-    }
-
-    if (index === maxRows - 1) {
-      result = group.realizedPnl;
     }
 
     return {
@@ -102,24 +106,17 @@ export function buildMetrics(
   const holdingMinutes = Math.max(Math.round((lastTime - firstTime) / 60000), 0);
 
   const transactionCost = (group.brokerFees ?? 0) + (group.charges ?? 0);
-  const capitalAmount = executions.reduce(
+  const entryExecutions = group.entryOrders.length > 0 ? group.entryOrders : executions;
+  const capitalAmount = entryExecutions.reduce(
     (sum, item) => sum + item.qty * item.tradedPrice,
     0
   );
-
-  const stopLoss =
-    executions.length > 0
-      ? group.positionType === 'long'
-        ? Math.min(...executions.map((item) => item.tradedPrice))
-        : Math.max(...executions.map((item) => item.tradedPrice))
-      : 0;
 
   return {
     left: [
       {
         label: 'Capital Amount',
         value: formatCompactCurrency(capitalAmount),
-        subValue: group.realizedPnl > 0 ? '(75%)' : undefined,
         tone: group.realizedPnl >= 0 ? ('success' as const) : undefined,
       },
       {
@@ -133,12 +130,11 @@ export function buildMetrics(
       },
       {
         label: 'R : R',
-        value:
-          group.realizedPnl > 0 ? '1 : 4' : group.realizedPnl < 0 ? '1 : 1' : '1 : 0',
+        value: '—',
       },
       {
         label: 'Enter SL',
-        value: formatCompactPrice(stopLoss),
+        value: '—',
       },
     ],
     center: {

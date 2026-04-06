@@ -29,10 +29,18 @@ export interface ImportHistoryDto {
   fundId: string;
   brokerName: string | null;
   fileName: string | null;
+  status: "pending" | "processing" | "completed" | "failed";
   totalRows: number;
   importedRows: number;
+  skippedRows: number;
   failedRows: number;
+  startedAt: Date | null;
+  completedAt: Date | null;
   createdAt: Date;
+}
+
+export interface ImportDetailDto extends ImportHistoryDto {
+  metadata: Record<string, unknown> | null;
 }
 
 export interface ImportHistoryFilters {

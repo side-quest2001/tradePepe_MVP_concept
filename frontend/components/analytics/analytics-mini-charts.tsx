@@ -20,6 +20,13 @@ import { cn } from '@/lib/utils/cn';
 
 type Point = { label: string; value: number };
 
+function ensureChartData(data: Point[]) {
+  const safe = data.filter(
+    (point) => typeof point.value === 'number' && Number.isFinite(point.value)
+  );
+  return safe.length > 0 ? safe : [{ label: '-', value: 0 }];
+}
+
 export function AnalyticsSparkline({
   data,
   color = '#18c99f',
@@ -27,10 +34,11 @@ export function AnalyticsSparkline({
   data: Point[];
   color?: string;
 }) {
+  const safeData = ensureChartData(data);
   return (
     <div className="h-12 w-[118px]">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 4, right: 2, left: 2, bottom: 0 }}>
+        <AreaChart data={safeData} margin={{ top: 4, right: 2, left: 2, bottom: 0 }}>
           <defs>
             <linearGradient id={`spark-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={color} stopOpacity={0.35} />
@@ -57,10 +65,11 @@ export function BuilderCanvasChart({
   data: Point[];
   mode: 'line' | 'bar' | 'candles';
 }) {
+  const safeData = ensureChartData(data);
   if (mode === 'bar') {
     return (
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 10, left: -18, bottom: 0 }}>
+        <BarChart data={safeData} margin={{ top: 8, right: 10, left: -18, bottom: 0 }}>
           <XAxis dataKey="label" tick={{ fill: '#7f8ea3', fontSize: 10 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fill: '#7f8ea3', fontSize: 10 }} axisLine={false} tickLine={false} />
           <CartesianGrid stroke="#203142" vertical={false} />
@@ -74,7 +83,7 @@ export function BuilderCanvasChart({
   if (mode === 'candles') {
     return (
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 8, right: 10, left: -18, bottom: 0 }}>
+        <LineChart data={safeData} margin={{ top: 8, right: 10, left: -18, bottom: 0 }}>
           <XAxis dataKey="label" tick={{ fill: '#7f8ea3', fontSize: 10 }} axisLine={false} tickLine={false} />
           <YAxis tick={{ fill: '#7f8ea3', fontSize: 10 }} axisLine={false} tickLine={false} />
           <CartesianGrid stroke="#203142" vertical={false} />
@@ -88,7 +97,7 @@ export function BuilderCanvasChart({
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data} margin={{ top: 8, right: 10, left: -18, bottom: 0 }}>
+      <AreaChart data={safeData} margin={{ top: 8, right: 10, left: -18, bottom: 0 }}>
         <defs>
           <linearGradient id="builder-line-fill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#1797e9" stopOpacity={0.2} />
@@ -106,9 +115,10 @@ export function BuilderCanvasChart({
 }
 
 export function PerformanceAreaChart({ data }: { data: Point[] }) {
+  const safeData = ensureChartData(data);
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data} margin={{ top: 16, right: 0, left: -22, bottom: 0 }}>
+      <AreaChart data={safeData} margin={{ top: 16, right: 0, left: -22, bottom: 0 }}>
         <defs>
           <linearGradient id="analytics-performance-fill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#39c88a" stopOpacity={0.35} />
@@ -125,15 +135,16 @@ export function PerformanceAreaChart({ data }: { data: Point[] }) {
 }
 
 export function PerformanceBarChart({ data }: { data: Point[] }) {
+  const safeData = ensureChartData(data);
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} margin={{ top: 16, right: 0, left: -18, bottom: 0 }}>
+      <BarChart data={safeData} margin={{ top: 16, right: 0, left: -18, bottom: 0 }}>
         <XAxis dataKey="label" tick={{ fill: '#a7b6c7', fontSize: 11 }} axisLine={false} tickLine={false} />
         <YAxis tick={{ fill: '#a7b6c7', fontSize: 11 }} axisLine={false} tickLine={false} />
         <CartesianGrid stroke="#233443" vertical={false} />
         <Tooltip contentStyle={{ background: '#162331', border: '1px solid #24384a', borderRadius: 12 }} />
         <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-          {data.map((point, index) => (
+          {safeData.map((point, index) => (
             <Cell key={`${point.label}-${index}`} fill={point.value >= 0 ? '#36ba7f' : '#bf5a42'} />
           ))}
         </Bar>
@@ -143,9 +154,10 @@ export function PerformanceBarChart({ data }: { data: Point[] }) {
 }
 
 export function DrawdownLineChart({ data }: { data: Point[] }) {
+  const safeData = ensureChartData(data);
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={data} margin={{ top: 12, right: 6, left: -10, bottom: 0 }}>
+      <LineChart data={safeData} margin={{ top: 12, right: 6, left: -10, bottom: 0 }}>
         <XAxis dataKey="label" tick={{ fill: '#8fa1b5', fontSize: 10 }} axisLine={false} tickLine={false} />
         <YAxis tick={{ fill: '#8fa1b5', fontSize: 10 }} axisLine={false} tickLine={false} orientation="right" />
         <Tooltip contentStyle={{ background: '#162331', border: '1px solid #24384a', borderRadius: 12 }} />
@@ -165,9 +177,10 @@ export function DrawdownLineChart({ data }: { data: Point[] }) {
 }
 
 export function TradesColumnChart({ data }: { data: Point[] }) {
+  const safeData = ensureChartData(data);
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} margin={{ top: 4, right: 0, left: -12, bottom: 0 }}>
+      <BarChart data={safeData} margin={{ top: 4, right: 0, left: -12, bottom: 0 }}>
         <CartesianGrid stroke="#233443" vertical={false} />
         <XAxis dataKey="label" tick={{ fill: '#8fa1b5', fontSize: 10 }} axisLine={false} tickLine={false} />
         <YAxis tick={{ fill: '#8fa1b5', fontSize: 10 }} axisLine={false} tickLine={false} />

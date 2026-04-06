@@ -20,6 +20,9 @@ const envSchema = z.object({
   MARKETAUX_API_TOKEN: z.string().default(""),
   MARKETAUX_NEWS_LIMIT: z.coerce.number().int().positive().default(3),
   ALPHA_VANTAGE_API_KEY: z.string().default(""),
+  CLOUDINARY_CLOUD_NAME: z.string().default(""),
+  CLOUDINARY_API_KEY: z.string().default(""),
+  CLOUDINARY_API_SECRET: z.string().default(""),
   MARKET_NEWS_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(60 * 15),
   MARKET_ECONOMIC_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(60 * 60)
 });

@@ -20,17 +20,32 @@ export type DerivedAnalytics = {
   tradeBars: Array<{ label: string; value: number }>;
   calendarLineSeries: Array<{ label: string; value: number }>;
   dashboardCards: {
-    totalCapitalDelta: number;
-    maxLossDelta: number;
-    winRateDelta: number;
-    riskRewardDelta: number;
-    highestProfitDelta: number;
-    lossStreakDelta: number;
+    totalCapitalDelta: number | null;
+    maxLossDelta: number | null;
+    winRateDelta: number | null;
+    riskRewardDelta: number | null;
+    highestProfitDelta: number | null;
+    lossStreakDelta: number | null;
   };
 };
 
 function executionsOf(group: OrderGroup) {
   return [...group.entryOrders, ...group.exitOrders];
+}
+
+function toNumber(value: number | string | null | undefined) {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+function toValidDate(value: string | null | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function countLabels<T>(values: T[]) {
@@ -52,23 +67,28 @@ function bestCount(map: Map<string, number>) {
 }
 
 function calculateHoldingMinutes(group: OrderGroup) {
-  const first = group.firstInteractionDate;
-  const last = group.lastInteractionDate;
-  const diff = new Date(last).getTime() - new Date(first).getTime();
+  const first = toValidDate(group.firstInteractionDate);
+  const last = toValidDate(group.lastInteractionDate ?? group.firstInteractionDate);
+  if (!first || !last) return 0;
+  const diff = last.getTime() - first.getTime();
   return Math.max(Math.round(diff / 60000), 0);
 }
 
 function formatMonthDay(input: string) {
+  const date = toValidDate(input);
+  if (!date) return '-';
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
-  }).format(new Date(input));
+  }).format(date);
 }
 
 function formatDayLabel(input: string) {
+  const date = toValidDate(input);
+  if (!date) return '-';
   return new Intl.DateTimeFormat('en-US', {
     weekday: 'short',
-  }).format(new Date(input));
+  }).format(date);
 }
 
 export function formatHoldingTime(totalMinutes: number) {
@@ -80,6 +100,19 @@ export function formatHoldingTime(totalMinutes: number) {
 
 export function formatChartCurrency(value: number) {
   return `${Math.round(value).toLocaleString('en-US')}`;
+}
+
+function calculateSeriesDelta(series: Array<{ value: number }>) {
+  if (series.length < 2) return null;
+  const previous = series[series.length - 2]?.value ?? 0;
+  const current = series[series.length - 1]?.value ?? 0;
+
+  if (!Number.isFinite(previous) || !Number.isFinite(current)) return null;
+  if (previous === 0) {
+    return current === 0 ? 0 : null;
+  }
+
+  return Number((((current - previous) / Math.abs(previous)) * 100).toFixed(1));
 }
 
 export function buildDerivedAnalytics(
@@ -107,8 +140,8 @@ export function buildDerivedAnalytics(
 
   const sortedGroups = [...groups].sort(
     (a, b) =>
-      new Date(a.firstInteractionDate).getTime() -
-      new Date(b.firstInteractionDate).getTime()
+      (toValidDate(a.firstInteractionDate)?.getTime() ?? 0) -
+      (toValidDate(b.firstInteractionDate)?.getTime() ?? 0)
   );
   let currentLossRun = 0;
   let longestLossRun = 0;
@@ -183,20 +216,27 @@ export function buildDerivedAnalytics(
     tradeBars,
     calendarLineSeries,
     dashboardCards: {
-      totalCapitalDelta: 19,
-      maxLossDelta: 3.7,
-      winRateDelta: 7.5,
-      riskRewardDelta: 7.5,
-      highestProfitDelta: 7.5,
-      lossStreakDelta: -7.5,
+      totalCapitalDelta: calculateSeriesDelta(pnlSeries),
+      maxLossDelta: calculateSeriesDelta(drawdownSeries),
+      winRateDelta: null,
+      riskRewardDelta: null,
+      highestProfitDelta: null,
+      lossStreakDelta:
+        winLoss.longestLossStreak > 0
+          ? Number(((-recentCurrentLoss / winLoss.longestLossStreak) * 100).toFixed(1))
+          : null,
     },
   };
 }
 
 export function buildTradeDetailRows(groups: OrderGroup[]) {
-  return groups.slice(0, 2).map((group, index) => {
-    const left = executionsOf(group)[0];
-    const right = executionsOf(groups[index + 1] ?? group)[0];
+  return groups.slice(0, 2).map((group) => {
+    const left = [...group.entryOrders].sort(
+      (a, b) => (toValidDate(a.executedAt)?.getTime() ?? 0) - (toValidDate(b.executedAt)?.getTime() ?? 0)
+    )[0];
+    const right = [...group.exitOrders].sort(
+      (a, b) => (toValidDate(b.executedAt)?.getTime() ?? 0) - (toValidDate(a.executedAt)?.getTime() ?? 0)
+    )[0];
     return {
       id: group.id,
       left: buildTradeEdge(left),
@@ -212,28 +252,34 @@ function buildTradeEdge(execution: OrderExecution | undefined, reverse = false) 
     return ['-', '-', '-', '-', '-', '-', '-'];
   }
 
-  const dt = new Date(execution.executedAt);
-  const date = new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-  }).format(dt);
-  const time = new Intl.DateTimeFormat('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  })
-    .format(dt)
-    .replace(' ', '');
+  const dt = toValidDate(execution.executedAt);
+  const quantity = toNumber(execution.qty);
+  const tradedPrice = toNumber(execution.tradedPrice);
+  const date = dt
+    ? new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+      }).format(dt)
+    : '-';
+  const time = dt
+    ? new Intl.DateTimeFormat('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      })
+        .format(dt)
+        .replace(' ', '')
+    : '-';
 
   const payload = [
     date,
     time,
-    execution.qty.toLocaleString('en-US'),
+    quantity.toLocaleString('en-US'),
     execution.symbol,
     execution.setup ?? 'N/A',
     execution.review ?? 'N/A',
-    `₹${Math.round(execution.tradedPrice).toLocaleString('en-US')}`,
+    `$${Math.round(tradedPrice).toLocaleString('en-US')}`,
   ];
 
   return reverse ? [...payload].reverse() : payload;

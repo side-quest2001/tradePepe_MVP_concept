@@ -42,6 +42,7 @@ export interface UserProfileDto {
     followers: number;
     published: number;
   };
+  followingIds?: string[];
 }
 
 export interface FlashNewsDto {
@@ -50,6 +51,8 @@ export interface FlashNewsDto {
   summary: string;
   source: string;
   createdAt: string;
+  imageUrl: string | null;
+  articleUrl: string | null;
 }
 
 export interface EconomicIndicatorRowDto {

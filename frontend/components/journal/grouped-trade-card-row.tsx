@@ -15,7 +15,7 @@ function LedgerPill({
   tone,
 }: {
   label?: string;
-  tone?: 'neutral' | 'success' | 'warning' | 'danger';
+  tone?: 'neutral' | 'success' | 'danger';
 }) {
   if (!label) {
     return (
@@ -102,11 +102,7 @@ export function GroupedTradeCardRow({
   onOpenLabels?: (executionId: string) => void;
 }) {
   const indicatorTone =
-    group.returnStatus === 'win'
-      ? 'bg-emerald-400'
-      : group.returnStatus === 'loss'
-        ? 'bg-rose-400'
-        : 'bg-amber-400';
+    group.returnStatus === 'loss' ? 'bg-rose-400' : 'bg-emerald-400';
 
   return (
     <div

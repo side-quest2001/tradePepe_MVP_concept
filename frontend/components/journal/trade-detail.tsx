@@ -22,29 +22,28 @@ function formatCompactCurrency(value: number) {
   return `${sign}${formatCurrency(Math.abs(value))}`;
 }
 
-function getToneClasses(label?: string, fallback?: 'neutral' | 'success' | 'warning' | 'danger') {
+function getToneClasses(label?: string, fallback?: 'neutral' | 'success' | 'danger') {
   const value = label?.toLowerCase() ?? '';
   const tone =
     fallback ??
     (value.includes('good')
       ? 'success'
       : value.includes('break')
-        ? 'warning'
+        ? 'success'
         : value.includes('retrace') || value.includes('range')
           ? 'neutral'
           : value.includes('early')
-            ? 'warning'
+            ? 'neutral'
             : value.includes('sl') || value.includes('fomo')
               ? 'danger'
               : 'neutral');
 
   if (tone === 'success') return 'bg-emerald-500/20 text-emerald-300 ring-1 ring-inset ring-emerald-500/30';
-  if (tone === 'warning') return 'bg-amber-500/20 text-amber-300 ring-1 ring-inset ring-amber-500/30';
   if (tone === 'danger') return 'bg-rose-500/20 text-rose-300 ring-1 ring-inset ring-rose-500/30';
-  return 'bg-sky-500/20 text-sky-200 ring-1 ring-inset ring-sky-500/30';
+  return 'bg-slate-500/20 text-slate-200 ring-1 ring-inset ring-slate-500/30';
 }
 
-function LedgerPill({ label, tone }: { label?: string; tone?: 'neutral' | 'success' | 'warning' | 'danger' }) {
+function LedgerPill({ label, tone }: { label?: string; tone?: 'neutral' | 'success' | 'danger' }) {
   if (!label) return <span className="inline-flex rounded-md bg-slate-500/15 px-2 py-0.5 text-[10px] font-semibold text-slate-300">N/A</span>;
 
   return (

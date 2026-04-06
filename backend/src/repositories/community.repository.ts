@@ -152,6 +152,15 @@ export class CommunityRepository {
       .where(eq(profileFollows.followerUserId, followerUserId));
     return row?.total ?? 0;
   }
+
+  async listFollowingTargetIds(followerUserId: string) {
+    const rows = await this.executor
+      .select({ targetUserId: profileFollows.targetUserId })
+      .from(profileFollows)
+      .where(eq(profileFollows.followerUserId, followerUserId));
+
+    return rows.map((row) => row.targetUserId);
+  }
 }
 
 export const communityRepository = new CommunityRepository();

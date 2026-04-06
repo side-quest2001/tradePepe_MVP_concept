@@ -13,21 +13,30 @@ export default async function ProfilePage() {
     token ? getMyProfile(token).catch(() => null) : Promise.resolve(null),
   ]);
   const groupsById = new Map(groups.map((group) => [group.id, group]));
-  const profilePost =
-    posts.find((post) => (profile ? post.author.id === profile.id : false)) ?? posts[0];
+  const profilePosts = profile ? posts.filter((post) => post.author.id === profile.id) : [];
 
   return (
     <div className="mx-auto flex max-w-[1180px] flex-col gap-5">
       <ProfileHero profile={profile} />
 
-      <div className="mx-auto w-full max-w-[930px]">
-        {profilePost ? (
-          <FeedCard
-            post={profilePost}
-            group={groupsById.get(profilePost.tradeId)}
-            context="profile"
-          />
-        ) : null}
+      <div className="mx-auto flex w-full max-w-[930px] flex-col gap-4">
+        {profilePosts.length > 0 ? (
+          profilePosts.map((post) => (
+            <FeedCard
+              key={post.id}
+              post={post}
+              group={groupsById.get(post.tradeId)}
+              context="profile"
+            />
+          ))
+        ) : (
+          <div className="rounded-[20px] border border-[#273543] bg-[#1b2530] px-6 py-10 text-center">
+            <p className="text-[16px] font-semibold text-white">No published trades yet</p>
+            <p className="mt-2 text-[13px] text-[#8fa1b2]">
+              Publish one of your journal groups and it will show up here.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

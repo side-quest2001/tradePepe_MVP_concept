@@ -56,6 +56,17 @@ function createRowError(rowNumber: number, messages: string[]): RowValidationIss
   };
 }
 
+function toImportApiError(error: unknown) {
+  const maybeDbError = error as { code?: string; constraint?: string; constraint_name?: string };
+  const constraint = maybeDbError.constraint_name ?? maybeDbError.constraint;
+
+  if (maybeDbError.code === "23505" && constraint === "imports_fund_checksum_unique_idx") {
+    return new ApiError(409, "This CSV has already been imported for the selected fund");
+  }
+
+  return error;
+}
+
 function validateBrokerRow(row: ParsedBrokerCsvRow) {
   try {
     const parsed = brokerCsvRowSchema.safeParse(row.values);
@@ -124,12 +135,17 @@ export class ImportService {
       fileName: input.fileName
     });
 
-    const importRecord = await this.persistence.createImportRecord({
-      fundId: request.fundId,
-      brokerName: request.brokerName,
-      fileName: request.fileName,
-      fileChecksum: createHash("sha256").update(input.csvContent).digest("hex")
-    });
+    let importRecord: Awaited<ReturnType<ImportPersistence["createImportRecord"]>>;
+    try {
+      importRecord = await this.persistence.createImportRecord({
+        fundId: request.fundId,
+        brokerName: request.brokerName,
+        fileName: request.fileName,
+        fileChecksum: createHash("sha256").update(input.csvContent).digest("hex")
+      });
+    } catch (error) {
+      throw toImportApiError(error);
+    }
 
     try {
       const parsedRows = await parseBrokerCsv(input.csvContent);
@@ -181,7 +197,7 @@ export class ImportService {
         }
       });
 
-      throw error;
+      throw toImportApiError(error);
     }
   }
 }

@@ -34,7 +34,7 @@ function StatCard({
 }: {
   title: string;
   value: string;
-  delta: string;
+  delta?: string | null;
   deltaPositive?: boolean;
   chart: React.ReactNode;
   rightLabel?: string;
@@ -49,7 +49,9 @@ function StatCard({
           </div>
           <div className="mt-4 flex items-end gap-2">
             <p className="text-[20px] font-semibold text-white">{value}</p>
-            <p className={`text-[11px] font-semibold ${deltaPositive ? 'text-[#1ec99f]' : 'text-[#ef4444]'}`}>{delta}</p>
+            {delta ? (
+              <p className={`text-[11px] font-semibold ${deltaPositive ? 'text-[#1ec99f]' : 'text-[#ef4444]'}`}>{delta}</p>
+            ) : null}
           </div>
         </div>
         <div className="flex flex-col items-end gap-3">
@@ -86,29 +88,36 @@ export function AnalyticsDashboard({
         <StatCard
           title="Total Capital"
           value={formatCurrency(summary.totalRealizedPnl)}
-          delta={`${derived.dashboardCards.totalCapitalDelta}% ↑`}
+          delta={
+            derived.dashboardCards.totalCapitalDelta !== null
+              ? `${Math.abs(derived.dashboardCards.totalCapitalDelta)}% ${derived.dashboardCards.totalCapitalDelta >= 0 ? '↑' : '↓'}`
+              : null
+          }
+          deltaPositive={(derived.dashboardCards.totalCapitalDelta ?? 0) >= 0}
           chart={<AnalyticsSparkline data={pnlSeries} color="#18c99f" />}
           rightLabel="All Time"
         />
         <StatCard
           title="Max. Loss Per Trade"
           value={formatCurrency(Math.abs(summary.maxLoss))}
-          delta={`${derived.dashboardCards.maxLossDelta}% ↓`}
-          deltaPositive={false}
+          delta={
+            derived.dashboardCards.maxLossDelta !== null
+              ? `${Math.abs(derived.dashboardCards.maxLossDelta)}% ${derived.dashboardCards.maxLossDelta >= 0 ? '↑' : '↓'}`
+              : null
+          }
+          deltaPositive={(derived.dashboardCards.maxLossDelta ?? 0) < 0}
           chart={<AnalyticsSparkline data={derived.drawdownSeries} color="#ee4646" />}
           rightLabel="This Month"
         />
         <StatCard
           title="Win-rate"
           value={formatPercent(winLoss.winRate).replace('.0', '')}
-          delta={`${derived.dashboardCards.winRateDelta}% ↑`}
           chart={<AnalyticsDonut value={winLoss.winRate} remainder={100 - winLoss.winRate} />}
           rightLabel="This Month"
         />
         <StatCard
           title="Avg. Risk to Reward"
           value={`${derived.riskRewardRatio.toFixed(1)} R`}
-          delta={`${derived.dashboardCards.riskRewardDelta}% ↑`}
           chart={<AnalyticsSparkline data={pnlSeries} color="#18c99f" />}
           rightLabel="This Month"
         />
@@ -198,7 +207,11 @@ export function AnalyticsDashboard({
                 <br />
                 {holding.seconds} Seconds
               </p>
-              <p className="mt-2 text-[11px] text-[#1ec99f]">↗ 7.5%</p>
+              {derived.dashboardCards.totalCapitalDelta !== null ? (
+                <p className={`mt-2 text-[11px] ${(derived.dashboardCards.totalCapitalDelta ?? 0) >= 0 ? 'text-[#1ec99f]' : 'text-[#ef4444]'}`}>
+                  {(derived.dashboardCards.totalCapitalDelta ?? 0) >= 0 ? '↗' : '↘'} {Math.abs(derived.dashboardCards.totalCapitalDelta ?? 0)}%
+                </p>
+              ) : null}
             </div>
             <Info className="h-3 w-3 text-[#1ec99f]" />
           </div>
@@ -212,15 +225,18 @@ export function AnalyticsDashboard({
         <StatCard
           title="Highest Profit"
           value={formatCompact(derived.highestProfit)}
-          delta={`${derived.dashboardCards.highestProfitDelta}% ↑`}
           chart={<AnalyticsSparkline data={pnlSeries} color="#18c99f" />}
           rightLabel="All Time"
         />
         <StatCard
           title="Loss Streak"
           value={`${derived.currentLossStreak}`}
-          delta={`${Math.abs(derived.dashboardCards.lossStreakDelta)}% ↓`}
-          deltaPositive={false}
+          delta={
+            derived.dashboardCards.lossStreakDelta !== null
+              ? `${Math.abs(derived.dashboardCards.lossStreakDelta)}% ${derived.dashboardCards.lossStreakDelta >= 0 ? '↑' : '↓'}`
+              : null
+          }
+          deltaPositive={(derived.dashboardCards.lossStreakDelta ?? 0) < 0}
           chart={<AnalyticsSparkline data={derived.drawdownSeries} color="#ef4444" />}
           rightLabel="All Time"
         />
@@ -231,7 +247,9 @@ export function AnalyticsDashboard({
               <div className="mt-4 inline-flex rounded-[4px] bg-[#9c6c21] px-3 py-2 text-[11px] text-white">
                 {derived.mostTradedSetup.label}
               </div>
-              <p className="mt-3 text-[11px] text-[#1ec99f]">7.5% ↑</p>
+              <p className="mt-3 text-[11px] text-[#9ab0c3]">
+                {derived.mostTradedSetup.value} trades
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <AnalyticsDonut
@@ -253,7 +271,9 @@ export function AnalyticsDashboard({
               <div className="mt-4 inline-flex rounded-[4px] bg-[#1a875b] px-3 py-2 text-[11px] text-white">
                 {derived.mostCommonReview.label}
               </div>
-              <p className="mt-3 text-[11px] text-[#1ec99f]">7.5% ↑</p>
+              <p className="mt-3 text-[11px] text-[#9ab0c3]">
+                {derived.mostCommonReview.value} trades
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <AnalyticsDonut

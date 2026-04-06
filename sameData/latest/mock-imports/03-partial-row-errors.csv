@@ -1,0 +1,4 @@
+Symbol,Buy/Sell,Type,Product Type,Qty,Rem Qty,Limit Price,Stop Price,Traded Price,Status,Order Time
+MSFT,Buy,Market,CNC,40,0,,,415.2,Filled,06 Apr 2026 09:30:00
+MSFT,Sell,Market,CNC,abc,0,,,421.8,Filled,06 Apr 2026 12:15:00
+MSFT,Sell,Market,CNC,40,0,,,421.8,Filled,not-a-date

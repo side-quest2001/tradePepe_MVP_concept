@@ -4,29 +4,39 @@ import { db } from "../db/client.js";
 import { imports, rawOrders } from "../db/schema/trading.schema.js";
 import { OrderGroupRepository } from "./order-group.repository.js";
 import { TradeGroupingService } from "../services/trade-grouping.service.js";
+import { ApiError } from "../utils/api-error.js";
 
 import type { FailImportInput, FinalizeImportInput, CreateImportRecordInput, ImportPersistence } from "../types/import.types.js";
 
 class ImportRepository implements ImportPersistence {
   async createImportRecord(input: CreateImportRecordInput) {
-    const results = await db
-      .insert(imports)
-      .values({
-        fundId: input.fundId,
-        source: "csv_upload",
-        status: "processing",
-        brokerName: input.brokerName ?? null,
-        fileName: input.fileName ?? null,
-        fileChecksum: input.fileChecksum ?? null,
-        startedAt: new Date(),
-        metadata: input.metadata ?? null
-      })
-      .returning({
-        id: imports.id,
-        status: imports.status
-      });
+    try {
+      const results = await db
+        .insert(imports)
+        .values({
+          fundId: input.fundId,
+          source: "csv_upload",
+          status: "processing",
+          brokerName: input.brokerName ?? null,
+          fileName: input.fileName ?? null,
+          fileChecksum: input.fileChecksum ?? null,
+          startedAt: new Date(),
+          metadata: input.metadata ?? null
+        })
+        .returning({
+          id: imports.id,
+          status: imports.status
+        });
 
-    return results[0];
+      return results[0];
+    } catch (error) {
+      const maybeDbError = error as { code?: string; constraint?: string; constraint_name?: string };
+      const constraint = maybeDbError.constraint_name ?? maybeDbError.constraint;
+      if (maybeDbError.code === "23505" && constraint === "imports_fund_checksum_unique_idx") {
+        throw new ApiError(409, "This CSV has already been imported for the selected fund");
+      }
+      throw error;
+    }
   }
 
   async finalizeImport(input: FinalizeImportInput) {

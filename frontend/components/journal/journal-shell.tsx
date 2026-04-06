@@ -5,20 +5,32 @@ import { Bell, ChevronDown, ChevronLeft, ChevronRight, Plus, Search, SlidersHori
 import { motion } from 'framer-motion';
 import { GroupedTradeCard } from '@/components/journal/grouped-trade-card';
 import { JournalDrawer } from '@/components/journal/journal-drawer';
+import { JournalImportDrawer } from '@/components/journal/journal-import-drawer';
 import { ManualTradeComposer } from '@/components/journal/manual-trade-composer';
 import { Panel } from '@/components/ui/panel';
-import type { OrderGroup, PnlPoint } from '@/lib/api/types';
+import type { Fund, ImportHistory, OrderGroup, PnlPoint } from '@/lib/api/types';
 
 export function JournalShell({
   groups,
   pnlSeries,
+  funds,
+  imports,
+  startWithImportDrawerOpen = false,
+  requireFirstImport = false,
 }: {
   groups: OrderGroup[];
   pnlSeries: PnlPoint[];
+  funds: Fund[];
+  imports: ImportHistory[];
+  startWithImportDrawerOpen?: boolean;
+  requireFirstImport?: boolean;
 }) {
   const pageSize = 5;
   const [journalGroups, setJournalGroups] = useState(groups);
+  const [journalFunds, setJournalFunds] = useState(funds);
+  const [journalImports, setJournalImports] = useState(imports);
   const [manualComposerOpen, setManualComposerOpen] = useState(false);
+  const [importDrawerOpen, setImportDrawerOpen] = useState(startWithImportDrawerOpen);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerExpanded, setDrawerExpanded] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -48,8 +60,8 @@ export function JournalShell({
       <motion.div
         animate={{
           paddingRight: drawerWidth,
-          filter: drawerOpen ? 'blur(1.5px)' : 'blur(0px)',
-          opacity: drawerOpen ? 0.58 : 1,
+          filter: drawerOpen || importDrawerOpen ? 'blur(1.5px)' : 'blur(0px)',
+          opacity: drawerOpen || importDrawerOpen ? 0.58 : 1,
         }}
         transition={{ type: 'spring', stiffness: 210, damping: 28 }}
         className="min-h-0 flex-1"
@@ -57,6 +69,28 @@ export function JournalShell({
         <Panel className="h-full overflow-hidden rounded-[14px] border-transparent bg-transparent p-0 shadow-none">
           <div className="flex h-full min-h-0 flex-col">
             <div className="px-4 pb-2 pt-1">
+              {requireFirstImport && journalImports.length === 0 ? (
+                <div className="mb-4 rounded-[14px] border border-[#0f8f73]/30 bg-[#0d1f27] px-4 py-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#18c99f]">
+                        First Import Required
+                      </p>
+                      <p className="mt-1 text-[13px] leading-5 text-[#c8d5e2]">
+                        Upload at least one CSV in your standard broker format before opening the dashboard.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setImportDrawerOpen(true)}
+                      className="inline-flex h-9 shrink-0 items-center gap-2 rounded-full bg-[#0f8f73] px-4 text-[12px] font-medium text-white"
+                    >
+                      Import first CSV
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <h1 className="text-[20px] font-semibold tracking-tight text-[#eef4fb]">
@@ -94,6 +128,14 @@ export function JournalShell({
                   <button className="inline-flex h-9 items-center gap-2 rounded-full bg-[#0f8f73] px-4 text-[12px] font-medium text-white">
                     1 Week
                     <ChevronDown className="h-3 w-3" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setImportDrawerOpen(true)}
+                    className="inline-flex h-9 items-center gap-2 rounded-full border border-[#0f8f73]/35 bg-[#0f8f73]/10 px-4 text-[12px] font-medium text-[#18c99f]"
+                  >
+                    Import CSV
                   </button>
                 </div>
 
@@ -178,6 +220,19 @@ export function JournalShell({
                       }}
                     />
                   ))}
+
+                  {paginatedGroups.length === 0 && !manualComposerOpen ? (
+                    <div className="flex min-h-[220px] items-center justify-center rounded-[10px] border border-dashed border-[#2c3f52] bg-[#15212c] px-6 text-center">
+                      <div>
+                        <p className="text-[14px] font-semibold text-[#e6eef7]">
+                          No journal trades yet
+                        </p>
+                        <p className="mt-2 text-[12px] leading-5 text-[#8ea0b2]">
+                          Import your first broker CSV or add a manual trade to start building the journal.
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="mt-5 flex items-center justify-between px-1">
@@ -234,6 +289,20 @@ export function JournalShell({
         onToggleExpanded={() => {
           setDrawerOpen(true);
           setDrawerExpanded((value) => !value);
+        }}
+      />
+
+      <JournalImportDrawer
+        open={importDrawerOpen}
+        funds={journalFunds}
+        imports={journalImports}
+        onClose={() => setImportDrawerOpen(false)}
+        onFundsChanged={setJournalFunds}
+        onImportsChanged={setJournalImports}
+        onGroupsImported={(nextGroups) => {
+          setJournalGroups(nextGroups);
+          setCurrentPage(1);
+          setImportDrawerOpen(false);
         }}
       />
     </div>

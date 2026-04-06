@@ -4,8 +4,25 @@ import { useMemo, useState } from 'react';
 import { ChevronDown, Pin } from 'lucide-react';
 import type { CalendarBucket, PnlPoint } from '@/lib/api/types';
 
+function toFiniteNumber(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
 function PerformanceChart({ data }: { data: PnlPoint[] }) {
-  const values = data.map((point) => point.value);
+  const safeData =
+    data
+      .map((point) => ({
+        ...point,
+        value: toFiniteNumber(point.value),
+      }))
+      .filter((point) => Number.isFinite(point.value)) || [];
+  const normalizedData = safeData.length > 0 ? safeData : [{ label: '-', value: 0 }];
+  const values = normalizedData.map((point) => point.value);
   const min = Math.min(...values, 0);
   const max = Math.max(...values, 1);
   const width = 760;
@@ -15,22 +32,23 @@ function PerformanceChart({ data }: { data: PnlPoint[] }) {
   const chartWidth = width - left - 84;
   const chartHeight = height - top - 48;
 
-  const points = data.map((point, index) => {
-    const x = left + (index * chartWidth) / Math.max(data.length - 1, 1);
+  const points = normalizedData.map((point, index) => {
+    const x = left + (index * chartWidth) / Math.max(normalizedData.length - 1, 1);
     const y =
       top + chartHeight - ((point.value - min) / Math.max(max - min, 1)) * chartHeight;
     return { ...point, x, y };
-  });
+  }).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
 
-  const linePath = points
+  const linePath = points.length > 0 ? points
     .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
-    .join(' ');
+    .join(' ') : '';
 
-  const areaPath = `${linePath} L ${points[points.length - 1]?.x ?? left} ${
+  const areaPath = linePath ? `${linePath} L ${points[points.length - 1]?.x ?? left} ${
     top + chartHeight
-  } L ${points[0]?.x ?? left} ${top + chartHeight} Z`;
+  } L ${points[0]?.x ?? left} ${top + chartHeight} Z` : '';
 
-  const focusPoint = points[Math.min(2, points.length - 1)];
+  const focusPoint =
+    points.length > 0 ? points[Math.min(2, points.length - 1)] : null;
   const ticks = [0, 50000, 55000, 60000, 65000, 70000, 75000];
 
   return (
@@ -65,10 +83,12 @@ function PerformanceChart({ data }: { data: PnlPoint[] }) {
           );
         })}
 
-        <path d={areaPath} fill="url(#performanceFill)" />
-        <path d={linePath} fill="none" stroke="#43c98c" strokeWidth="4" strokeLinecap="round" />
+        {areaPath ? <path d={areaPath} fill="url(#performanceFill)" /> : null}
+        {linePath ? (
+          <path d={linePath} fill="none" stroke="#43c98c" strokeWidth="4" strokeLinecap="round" />
+        ) : null}
 
-        {focusPoint ? (
+        {focusPoint && Number.isFinite(focusPoint.x) && Number.isFinite(focusPoint.y) ? (
           <g>
             <line
               x1={focusPoint.x}

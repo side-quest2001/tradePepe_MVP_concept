@@ -8,6 +8,8 @@ interface MarketAuxArticle {
   description?: string;
   source?: string;
   published_at?: string;
+  image_url?: string;
+  url?: string;
 }
 
 interface MarketAuxResponse {
@@ -50,7 +52,9 @@ export class MarketAuxProvider implements FlashNewsProvider {
       title: item.title?.trim() || "Market headline",
       summary: item.description?.trim() || "Latest market development.",
       source: item.source?.trim() || "MarketAux",
-      createdAt: item.published_at ?? new Date().toISOString()
+      createdAt: item.published_at ?? new Date().toISOString(),
+      imageUrl: item.image_url?.trim() || null,
+      articleUrl: item.url?.trim() || null
     }));
   }
 }
