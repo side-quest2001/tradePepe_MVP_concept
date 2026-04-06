@@ -30,7 +30,7 @@ import type { PatchNoteInput, PatchPublishInput } from "../validators/resource.v
 export class JournalService {
   constructor(private readonly repository: JournalRepository = journalRepository) {}
 
-  async createManualOrder(input: ManualOrderInput) {
+  async createManualOrder(input: ManualOrderInput, ownerUserId: string) {
     const result = await this.repository.createManualOrderWithGrouping({
       fundId: input.fundId,
       importId: null,
@@ -63,17 +63,17 @@ export class JournalService {
         notes: input.notes ?? null
       },
       notes: input.notes ?? null
-    });
+    }, ownerUserId);
 
     return mapManualOrderCreateResponse(result);
   }
 
-  async listOrders(query: OrderListQuery) {
+  async listOrders(query: OrderListQuery & { ownerUserId?: string }) {
     const result = await this.repository.listOrders(query);
     return mapPaginatedOrders(result);
   }
 
-  async listOrderGroups(query: OrderGroupListQuery) {
+  async listOrderGroups(query: OrderGroupListQuery & { ownerUserId?: string }) {
     const groupsPage = await this.repository.listOrderGroups(query);
     const items = await this.repository.getOrderGroupBundles(groupsPage.items.map((group) => group.id));
 
@@ -83,8 +83,8 @@ export class JournalService {
     });
   }
 
-  async getOrderGroupById(id: string) {
-    const bundle = await this.repository.getOrderGroupBundle(id);
+  async getOrderGroupById(id: string, ownerUserId?: string) {
+    const bundle = await this.repository.getOrderGroupBundle(id, ownerUserId);
 
     if (!bundle) {
       throw new ApiError(404, "Order group not found");
@@ -93,7 +93,12 @@ export class JournalService {
     return mapOrderGroupBundle(bundle);
   }
 
-  async updateOrderGroup(id: string, input: PatchOrderGroupInput) {
+  async updateOrderGroup(id: string, input: PatchOrderGroupInput, ownerUserId?: string) {
+    const existing = await this.repository.getOrderGroupBundle(id, ownerUserId);
+    if (!existing) {
+      throw new ApiError(404, "Order group not found");
+    }
+
     const updatedGroup = await this.repository.updateOrderGroup(id, input);
 
     if (!updatedGroup) {
@@ -103,8 +108,8 @@ export class JournalService {
     return this.getOrderGroupById(updatedGroup.id);
   }
 
-  async createTradeNote(orderGroupId: string, input: CreateTradeNoteInput) {
-    const bundle = await this.repository.getOrderGroupBundle(orderGroupId);
+  async createTradeNote(orderGroupId: string, input: CreateTradeNoteInput, ownerUserId?: string) {
+    const bundle = await this.repository.getOrderGroupBundle(orderGroupId, ownerUserId);
 
     if (!bundle) {
       throw new ApiError(404, "Order group not found");
@@ -120,8 +125,8 @@ export class JournalService {
     return note;
   }
 
-  async listTradeNotes(orderGroupId: string) {
-    const bundle = await this.repository.getOrderGroupBundle(orderGroupId);
+  async listTradeNotes(orderGroupId: string, ownerUserId?: string) {
+    const bundle = await this.repository.getOrderGroupBundle(orderGroupId, ownerUserId);
 
     if (!bundle) {
       throw new ApiError(404, "Order group not found");
@@ -154,16 +159,16 @@ export class JournalService {
     };
   }
 
-  async assignSetupTag(orderGroupId: string, input: AssignTradeTagInput) {
-    return this.assignTag(orderGroupId, input, "setup");
+  async assignSetupTag(orderGroupId: string, input: AssignTradeTagInput, ownerUserId?: string) {
+    return this.assignTag(orderGroupId, input, "setup", ownerUserId);
   }
 
-  async assignReviewTag(orderGroupId: string, input: AssignTradeTagInput) {
-    return this.assignTag(orderGroupId, input, "review");
+  async assignReviewTag(orderGroupId: string, input: AssignTradeTagInput, ownerUserId?: string) {
+    return this.assignTag(orderGroupId, input, "review", ownerUserId);
   }
 
   async publishTradeGroup(orderGroupId: string, input: PublishTradeGroupInput, createdByUserId?: string | null) {
-    const bundle = await this.repository.getOrderGroupBundle(orderGroupId);
+    const bundle = await this.repository.getOrderGroupBundle(orderGroupId, createdByUserId ?? undefined);
 
     if (!bundle) {
       throw new ApiError(404, "Order group not found");
@@ -190,8 +195,8 @@ export class JournalService {
     return sharedTrade;
   }
 
-  async getPublishedTradeGroup(orderGroupId: string) {
-    const bundle = await this.repository.getOrderGroupBundle(orderGroupId);
+  async getPublishedTradeGroup(orderGroupId: string, ownerUserId?: string) {
+    const bundle = await this.repository.getOrderGroupBundle(orderGroupId, ownerUserId);
 
     if (!bundle) {
       throw new ApiError(404, "Order group not found");
@@ -201,7 +206,7 @@ export class JournalService {
   }
 
   async updatePublishedTradeGroup(orderGroupId: string, input: PatchPublishInput, createdByUserId?: string | null) {
-    const bundle = await this.repository.getOrderGroupBundle(orderGroupId);
+    const bundle = await this.repository.getOrderGroupBundle(orderGroupId, createdByUserId ?? undefined);
 
     if (!bundle) {
       throw new ApiError(404, "Order group not found");
@@ -224,8 +229,8 @@ export class JournalService {
     return updated;
   }
 
-  async getOrderGroupChart(orderGroupId: string): Promise<OrderGroupChartDto> {
-    const bundle = await this.repository.getOrderGroupBundle(orderGroupId);
+  async getOrderGroupChart(orderGroupId: string, ownerUserId?: string): Promise<OrderGroupChartDto> {
+    const bundle = await this.repository.getOrderGroupBundle(orderGroupId, ownerUserId);
 
     if (!bundle) {
       throw new ApiError(404, "Order group not found");
@@ -277,8 +282,8 @@ export class JournalService {
     };
   }
 
-  private async assignTag(orderGroupId: string, input: AssignTradeTagInput, kind: "setup" | "review") {
-    const bundle = await this.repository.getOrderGroupBundle(orderGroupId);
+  private async assignTag(orderGroupId: string, input: AssignTradeTagInput, kind: "setup" | "review", ownerUserId?: string) {
+    const bundle = await this.repository.getOrderGroupBundle(orderGroupId, ownerUserId);
 
     if (!bundle) {
       throw new ApiError(404, "Order group not found");

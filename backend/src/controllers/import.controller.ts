@@ -26,6 +26,7 @@ export const uploadBrokerCsv = asyncHandler(async (req: Request, res: Response) 
   const summary = await importService.importBrokerCsv({
     csvContent: file.buffer.toString("utf-8"),
     fundId,
+    ownerUserId: req.authUser!.id,
     brokerName,
     fileName: file.originalname
   });

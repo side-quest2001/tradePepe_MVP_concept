@@ -48,6 +48,10 @@ export const funds = pgTable(
   "funds",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    ownerUserId: uuid("owner_user_id").references(() => users.id, {
+      onDelete: "set null",
+      onUpdate: "cascade"
+    }),
     name: varchar("name", { length: 120 }).notNull(),
     code: varchar("code", { length: 40 }).notNull(),
     brokerName: varchar("broker_name", { length: 120 }),
@@ -61,6 +65,7 @@ export const funds = pgTable(
   },
   (table) => [
     uniqueIndex("funds_code_unique_idx").on(table.code),
+    index("funds_owner_user_id_idx").on(table.ownerUserId),
     uniqueIndex("funds_broker_account_ref_unique_idx")
       .on(table.brokerAccountRef)
       .where(sql`${table.brokerAccountRef} is not null`),

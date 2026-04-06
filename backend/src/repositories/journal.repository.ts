@@ -2,6 +2,7 @@ import { and, asc, count, desc, eq, gte, inArray, lte, or, sql } from "drizzle-o
 
 import { db } from "../db/client.js";
 import {
+  funds,
   orderGroupOrders,
   orderGroupReviewTags,
   orderGroupSetupTags,
@@ -13,6 +14,7 @@ import {
 } from "../db/schema/trading.schema.js";
 import { OrderGroupRepository } from "./order-group.repository.js";
 import { TradeGroupingService } from "../services/trade-grouping.service.js";
+import { ApiError } from "../utils/api-error.js";
 import type { DbExecutor } from "../types/db.types.js";
 import type { JournalRepository, OrderFilters, OrderGroupBundle, OrderGroupFilters, PaginatedResult } from "../types/journal.types.js";
 import type {
@@ -39,14 +41,26 @@ function buildPagination<T>(items: T[], total: number, page: number, pageSize: n
 export class JournalRepositoryImpl implements JournalRepository {
   constructor(private readonly executor: DbExecutor = db) {}
 
-  async createManualOrderWithGrouping(input: NewRawOrder) {
+  async createManualOrderWithGrouping(input: NewRawOrder, ownerUserId: string) {
     return this.executor.transaction(async (tx) => {
+      const fundRows = await tx
+        .select({ id: funds.id })
+        .from(funds)
+        .where(and(eq(funds.id, input.fundId), eq(funds.ownerUserId, ownerUserId)))
+        .limit(1);
+
+      if (!fundRows[0]) {
+        throw new ApiError(404, "Fund not found");
+      }
+
       const insertedOrders = await tx.insert(rawOrders).values(input).returning();
       const order = insertedOrders[0];
       const groupingService = new TradeGroupingService(new OrderGroupRepository(tx));
       const groupingResult = await groupingService.processOrder(order);
       const scopedRepository = new JournalRepositoryImpl(tx);
-      const orderGroup = groupingResult ? await scopedRepository.getOrderGroupBundle(groupingResult.groupId) : null;
+      const orderGroup = groupingResult
+        ? await scopedRepository.getOrderGroupBundle(groupingResult.groupId, ownerUserId)
+        : null;
 
       return {
         order,
@@ -58,6 +72,7 @@ export class JournalRepositoryImpl implements JournalRepository {
   async listOrders(filters: OrderFilters) {
     const predicates = [];
 
+    if (filters.ownerUserId) predicates.push(eq(funds.ownerUserId, filters.ownerUserId));
     if (filters.symbol) predicates.push(eq(rawOrders.symbol, filters.symbol.toUpperCase()));
     if (filters.fundId) predicates.push(eq(rawOrders.fundId, filters.fundId));
     if (filters.status) predicates.push(eq(rawOrders.normalizedStatus, filters.status));
@@ -68,23 +83,31 @@ export class JournalRepositoryImpl implements JournalRepository {
     const [totalResult] = await this.executor
       .select({ count: count() })
       .from(rawOrders)
+      .innerJoin(funds, eq(funds.id, rawOrders.fundId))
       .where(whereClause);
 
     const orderByColumn = filters.sortBy === "orderTime" ? rawOrders.orderTime : rawOrders.executionTime;
     const items = await this.executor
       .select()
       .from(rawOrders)
+      .innerJoin(funds, eq(funds.id, rawOrders.fundId))
       .where(whereClause)
       .orderBy(filters.sortOrder === "asc" ? asc(orderByColumn) : desc(orderByColumn), desc(rawOrders.createdAt))
       .limit(filters.pageSize)
       .offset((filters.page - 1) * filters.pageSize);
 
-    return buildPagination(items, totalResult?.count ?? 0, filters.page, filters.pageSize);
+    return buildPagination(
+      items.map((item) => item.raw_orders),
+      totalResult?.count ?? 0,
+      filters.page,
+      filters.pageSize
+    );
   }
 
   async listOrderGroups(filters: OrderGroupFilters) {
     const predicates = [];
 
+    if (filters.ownerUserId) predicates.push(eq(funds.ownerUserId, filters.ownerUserId));
     if (filters.symbol) predicates.push(eq(orderGroups.symbol, filters.symbol.toUpperCase()));
     if (filters.fundId) predicates.push(eq(orderGroups.fundId, filters.fundId));
     if (filters.positionType) predicates.push(eq(orderGroups.positionType, filters.positionType));
@@ -121,6 +144,7 @@ export class JournalRepositoryImpl implements JournalRepository {
     const [totalResult] = await this.executor
       .select({ count: count() })
       .from(orderGroups)
+      .innerJoin(funds, eq(funds.id, orderGroups.fundId))
       .where(whereClause);
 
     const sortColumn =
@@ -129,20 +153,26 @@ export class JournalRepositoryImpl implements JournalRepository {
     const groups = await this.executor
       .select()
       .from(orderGroups)
+      .innerJoin(funds, eq(funds.id, orderGroups.fundId))
       .where(whereClause)
       .orderBy(filters.sortOrder === "asc" ? asc(sortColumn) : desc(sortColumn), desc(orderGroups.createdAt))
       .limit(filters.pageSize)
       .offset((filters.page - 1) * filters.pageSize);
 
-    return buildPagination(groups, totalResult?.count ?? 0, filters.page, filters.pageSize);
+    return buildPagination(
+      groups.map((item) => item.order_groups),
+      totalResult?.count ?? 0,
+      filters.page,
+      filters.pageSize
+    );
   }
 
-  async getOrderGroupBundle(id: string): Promise<OrderGroupBundle | null> {
-    const results = await this.getOrderGroupBundles([id]);
+  async getOrderGroupBundle(id: string, ownerUserId?: string): Promise<OrderGroupBundle | null> {
+    const results = await this.getOrderGroupBundles([id], ownerUserId);
     return results[0] ?? null;
   }
 
-  async getOrderGroupBundles(ids: string[]): Promise<OrderGroupBundle[]> {
+  async getOrderGroupBundles(ids: string[], ownerUserId?: string): Promise<OrderGroupBundle[]> {
     if (ids.length === 0) {
       return [];
     }
@@ -150,9 +180,16 @@ export class JournalRepositoryImpl implements JournalRepository {
     const groups = await this.executor
       .select()
       .from(orderGroups)
-      .where(inArray(orderGroups.id, ids));
+      .innerJoin(funds, eq(funds.id, orderGroups.fundId))
+      .where(
+        ownerUserId
+          ? and(inArray(orderGroups.id, ids), eq(funds.ownerUserId, ownerUserId))
+          : inArray(orderGroups.id, ids)
+      );
 
-    if (groups.length === 0) {
+    const scopedGroups = groups.map((item) => item.order_groups);
+
+    if (scopedGroups.length === 0) {
       return [];
     }
 
@@ -191,7 +228,7 @@ export class JournalRepositoryImpl implements JournalRepository {
       })
       .from(orderGroupOrders)
       .innerJoin(rawOrders, eq(rawOrders.id, orderGroupOrders.rawOrderId))
-      .where(inArray(orderGroupOrders.orderGroupId, ids))
+      .where(inArray(orderGroupOrders.orderGroupId, scopedGroups.map((group) => group.id)))
       .orderBy(asc(orderGroupOrders.sequenceNumber));
 
     const setupTags = await this.executor
@@ -208,7 +245,7 @@ export class JournalRepositoryImpl implements JournalRepository {
       })
       .from(orderGroupSetupTags)
       .innerJoin(tradeTags, eq(tradeTags.id, orderGroupSetupTags.tradeTagId))
-      .where(inArray(orderGroupSetupTags.orderGroupId, ids));
+      .where(inArray(orderGroupSetupTags.orderGroupId, scopedGroups.map((group) => group.id)));
 
     const reviewTags = await this.executor
       .select({
@@ -224,18 +261,18 @@ export class JournalRepositoryImpl implements JournalRepository {
       })
       .from(orderGroupReviewTags)
       .innerJoin(tradeTags, eq(tradeTags.id, orderGroupReviewTags.tradeTagId))
-      .where(inArray(orderGroupReviewTags.orderGroupId, ids));
+      .where(inArray(orderGroupReviewTags.orderGroupId, scopedGroups.map((group) => group.id)));
 
     const notes = await this.executor
       .select()
       .from(tradeNotes)
-      .where(inArray(tradeNotes.orderGroupId, ids))
+      .where(inArray(tradeNotes.orderGroupId, scopedGroups.map((group) => group.id)))
       .orderBy(desc(tradeNotes.createdAt));
 
     const publishedTrades = await this.executor
       .select()
       .from(sharedTradeGroups)
-      .where(inArray(sharedTradeGroups.orderGroupId, ids));
+      .where(inArray(sharedTradeGroups.orderGroupId, scopedGroups.map((group) => group.id)));
 
     const groupedOrdersMap = new Map<string, OrderGroupBundle["orders"]>();
     for (const order of orders) {
@@ -270,7 +307,7 @@ export class JournalRepositoryImpl implements JournalRepository {
 
     const publishedTradeByGroupId = new Map(publishedTrades.map((trade) => [trade.orderGroupId, trade]));
 
-    return groups.map((group) => ({
+    return scopedGroups.map((group) => ({
       group,
       orders: groupedOrdersMap.get(group.id) ?? [],
       setupTags: groupedSetupTags.get(group.id) ?? [],

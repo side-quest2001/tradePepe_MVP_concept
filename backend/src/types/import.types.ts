@@ -38,6 +38,7 @@ export interface FailImportInput {
 }
 
 export interface ImportPersistence {
+  ensureFundOwnedByUser(fundId: string, ownerUserId: string): Promise<{ id: string } | null>;
   createImportRecord(input: CreateImportRecordInput): Promise<{ id: string } & Pick<NewImport, "status">>;
   finalizeImport(input: FinalizeImportInput): Promise<void>;
   failImport(input: FailImportInput): Promise<void>;

@@ -66,8 +66,12 @@ export class ResourceRepositoryImpl implements ResourceRepository {
     return results[0] ?? null;
   }
 
-  async listFunds(): Promise<Fund[]> {
-    return this.executor.select().from(funds).orderBy(funds.name);
+  async listFunds(ownerUserId?: string): Promise<Fund[]> {
+    return this.executor
+      .select()
+      .from(funds)
+      .where(ownerUserId ? eq(funds.ownerUserId, ownerUserId) : undefined)
+      .orderBy(funds.name);
   }
 
   async createFund(input: Pick<Fund, "name" | "code" | "baseCurrency"> & Partial<Fund>): Promise<Fund> {
@@ -88,33 +92,55 @@ export class ResourceRepositoryImpl implements ResourceRepository {
     return results[0] ?? null;
   }
 
-  async findFundById(id: string): Promise<Fund | null> {
-    const results = await this.executor.select().from(funds).where(eq(funds.id, id)).limit(1);
+  async findFundById(id: string, ownerUserId?: string): Promise<Fund | null> {
+    const results = await this.executor
+      .select()
+      .from(funds)
+      .where(ownerUserId ? and(eq(funds.id, id), eq(funds.ownerUserId, ownerUserId)) : eq(funds.id, id))
+      .limit(1);
     return results[0] ?? null;
   }
 
   async listImports(filters: ImportHistoryFilters) {
     const predicates = [];
+    if (filters.ownerUserId) {
+      predicates.push(eq(funds.ownerUserId, filters.ownerUserId));
+    }
     if (filters.fundId) {
       predicates.push(eq(imports.fundId, filters.fundId));
     }
 
     const whereClause = predicates.length > 0 ? and(...predicates) : undefined;
-    const [totalResult] = await this.executor.select({ count: count() }).from(imports).where(whereClause);
+    const [totalResult] = await this.executor
+      .select({ count: count() })
+      .from(imports)
+      .innerJoin(funds, eq(funds.id, imports.fundId))
+      .where(whereClause);
     const items = await this.executor
       .select()
       .from(imports)
+      .innerJoin(funds, eq(funds.id, imports.fundId))
       .where(whereClause)
       .orderBy(desc(imports.createdAt))
       .limit(filters.pageSize)
       .offset((filters.page - 1) * filters.pageSize);
 
-    return buildPagination(items, totalResult?.count ?? 0, filters.page, filters.pageSize);
+    return buildPagination(
+      items.map((item) => item.imports),
+      totalResult?.count ?? 0,
+      filters.page,
+      filters.pageSize
+    );
   }
 
-  async getImportById(id: string): Promise<Import | null> {
-    const results = await this.executor.select().from(imports).where(eq(imports.id, id)).limit(1);
-    return results[0] ?? null;
+  async getImportById(id: string, ownerUserId?: string): Promise<Import | null> {
+    const results = await this.executor
+      .select()
+      .from(imports)
+      .innerJoin(funds, eq(funds.id, imports.fundId))
+      .where(ownerUserId ? and(eq(imports.id, id), eq(funds.ownerUserId, ownerUserId)) : eq(imports.id, id))
+      .limit(1);
+    return results[0]?.imports ?? null;
   }
 
   async listNotesByOrderGroupId(orderGroupId: string): Promise<TradeNote[]> {

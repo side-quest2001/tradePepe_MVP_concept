@@ -46,6 +46,7 @@ export interface ImportDetailDto extends ImportHistoryDto {
 export interface ImportHistoryFilters {
   page: number;
   pageSize: number;
+  ownerUserId?: string;
   fundId?: string;
 }
 
@@ -55,12 +56,12 @@ export interface ResourceRepository {
   updateTag(id: string, input: Partial<TradeTag>): Promise<TradeTag | null>;
   findTagById(id: string): Promise<TradeTag | null>;
   findTagBySlugAndScope(slug: string, scope: "setup" | "review"): Promise<TradeTag | null>;
-  listFunds(): Promise<Fund[]>;
+  listFunds(ownerUserId?: string): Promise<Fund[]>;
   createFund(input: Pick<Fund, "name" | "code" | "baseCurrency"> & Partial<Fund>): Promise<Fund>;
   updateFund(id: string, input: Partial<Fund>): Promise<Fund | null>;
-  findFundById(id: string): Promise<Fund | null>;
+  findFundById(id: string, ownerUserId?: string): Promise<Fund | null>;
   listImports(filters: ImportHistoryFilters): Promise<PaginatedResult<Import>>;
-  getImportById(id: string): Promise<Import | null>;
+  getImportById(id: string, ownerUserId?: string): Promise<Import | null>;
   listNotesByOrderGroupId(orderGroupId: string): Promise<TradeNote[]>;
   findNoteById(id: string): Promise<TradeNote | null>;
   updateNote(id: string, input: Partial<TradeNote>): Promise<TradeNote | null>;

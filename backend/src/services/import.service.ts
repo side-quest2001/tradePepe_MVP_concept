@@ -128,12 +128,17 @@ function mapRowToRawOrder(row: ParsedBrokerCsvRow, request: CsvImportRequest, im
 export class ImportService {
   constructor(private readonly persistence: ImportPersistence = importRepository) {}
 
-  async importBrokerCsv(input: { csvContent: string; fundId: string; brokerName?: string; fileName?: string }): Promise<CsvImportSummary> {
+  async importBrokerCsv(input: { csvContent: string; fundId: string; ownerUserId: string; brokerName?: string; fileName?: string }): Promise<CsvImportSummary> {
     const request = csvImportRequestSchema.parse({
       fundId: input.fundId,
       brokerName: input.brokerName,
       fileName: input.fileName
     });
+
+    const ownedFund = await this.persistence.ensureFundOwnedByUser(request.fundId, input.ownerUserId);
+    if (!ownedFund) {
+      throw new ApiError(404, "Fund not found");
+    }
 
     let importRecord: Awaited<ReturnType<ImportPersistence["createImportRecord"]>>;
     try {

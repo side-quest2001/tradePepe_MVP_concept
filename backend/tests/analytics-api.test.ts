@@ -14,6 +14,18 @@ vi.mock("../src/services/analytics.service.js", () => ({
   analyticsService: analyticsServiceMock
 }));
 
+vi.mock("../src/middlewares/auth.middleware.js", () => ({
+  requireAuth: (req: { authUser?: unknown }, _res: unknown, next: () => void) => {
+    req.authUser = {
+      id: "11111111-1111-4111-8111-111111111111",
+      email: "pepe@tradepepe.dev",
+      name: "Siddha PePe",
+      handle: "@siddhapepe"
+    };
+    next();
+  }
+}));
+
 const { createApp } = await import("../src/app.js");
 
 describe("Analytics API", () => {

@@ -1,6 +1,7 @@
 import type { OrderGroup } from "../db/schema/trading.schema.js";
 
 export interface AnalyticsFilters {
+  ownerUserId?: string;
   fundId?: string;
   symbol?: string;
   dateFrom?: Date;

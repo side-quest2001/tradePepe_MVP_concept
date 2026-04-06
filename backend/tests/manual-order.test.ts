@@ -112,6 +112,10 @@ function createRepositoryMock(): JournalRepository {
     getOrderGroupBundle: vi.fn(),
     updateOrderGroup: vi.fn(),
     createTradeNote: vi.fn(),
+    listTradeNotes: vi.fn(),
+    getTradeNoteById: vi.fn(),
+    updateTradeNote: vi.fn(),
+    deleteTradeNote: vi.fn(),
     resolveTradeTag: vi.fn(),
     addSetupTag: vi.fn(),
     addReviewTag: vi.fn(),
@@ -181,7 +185,7 @@ describe("JournalService.createManualOrder", () => {
     const service = new JournalService(repository);
     const input = manualOrderSchema.parse(makeManualPayload()) as ManualOrderInput;
 
-    const result = await service.createManualOrder(input);
+    const result = await service.createManualOrder(input, "user-1");
 
     expect(repository.createManualOrderWithGrouping).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -194,7 +198,8 @@ describe("JournalService.createManualOrder", () => {
         executedQuantity: "2.50000000",
         tradedPrice: "125.50000000",
         normalizedStatus: "filled"
-      })
+      }),
+      "user-1"
     );
     expect(result.order.symbol).toBe("NIFTY");
     expect(result.orderGroup?.id).toBe("group-1");

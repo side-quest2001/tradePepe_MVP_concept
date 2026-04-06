@@ -33,27 +33,27 @@ export const patchTag = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json(buildSuccessResponse(result));
 });
 
-export const listFunds = asyncHandler(async (_req: Request, res: Response) => {
-  const result = await resourceService.listFunds();
+export const listFunds = asyncHandler(async (req: Request, res: Response) => {
+  const result = await resourceService.listFunds(req.authUser!.id);
   res.status(200).json(buildSuccessResponse(result));
 });
 
 export const createFund = asyncHandler(async (req: Request, res: Response) => {
   const payload = createFundSchema.parse(req.body);
-  const result = await resourceService.createFund(payload);
+  const result = await resourceService.createFund(payload, req.authUser!.id);
   res.status(201).json(buildSuccessResponse(result));
 });
 
 export const patchFund = asyncHandler(async (req: Request, res: Response) => {
   const params = idParamSchema.parse(req.params);
   const payload = patchFundSchema.parse(req.body);
-  const result = await resourceService.updateFund(params.id, payload);
+  const result = await resourceService.updateFund(params.id, payload, req.authUser!.id);
   res.status(200).json(buildSuccessResponse(result));
 });
 
 export const listImports = asyncHandler(async (req: Request, res: Response) => {
   const query = importsListQuerySchema.parse(req.query);
-  const result = await resourceService.listImports(query);
+  const result = await resourceService.listImports(query, req.authUser!.id);
 
   res.status(200).json(
     buildSuccessResponse(result.items, {
@@ -69,7 +69,7 @@ export const listImports = asyncHandler(async (req: Request, res: Response) => {
 
 export const getImportById = asyncHandler(async (req: Request, res: Response) => {
   const params = idParamSchema.parse(req.params);
-  const result = await resourceService.getImportById(params.id);
+  const result = await resourceService.getImportById(params.id, req.authUser!.id);
   res.status(200).json(buildSuccessResponse(result));
 });
 

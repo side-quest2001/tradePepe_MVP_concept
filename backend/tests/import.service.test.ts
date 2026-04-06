@@ -17,6 +17,7 @@ NSE:NIFTY2612025700PE,Buy,Limit,MARGIN,130,0,195,,193.75,Filled,19 Jan 2026 12:2
 
 function createPersistenceMock(): ImportPersistence {
   return {
+    ensureFundOwnedByUser: vi.fn().mockResolvedValue({ id: validFundId }),
     createImportRecord: vi.fn().mockResolvedValue({ id: "import-1", status: "processing" }),
     finalizeImport: vi.fn().mockResolvedValue(undefined),
     failImport: vi.fn().mockResolvedValue(undefined)
@@ -31,6 +32,7 @@ describe("ImportService", () => {
     const result = await service.importBrokerCsv({
       csvContent: validCsv,
       fundId: validFundId,
+      ownerUserId: "user-1",
       brokerName: "Zerodha",
       fileName: "orders.csv"
     });
@@ -57,7 +59,8 @@ RELIANCE,BUY,MARKET,10,0,,,2450.50,FILLED,2026-04-05T09:15:00Z`;
     await expect(
       service.importBrokerCsv({
         csvContent: badHeaderCsv,
-        fundId: validFundId
+        fundId: validFundId,
+        ownerUserId: "user-1"
       })
     ).rejects.toMatchObject({
       statusCode: 400,
@@ -75,6 +78,7 @@ RELIANCE,BUY,MARKET,10,0,,,2450.50,FILLED,2026-04-05T09:15:00Z`;
     const result = await service.importBrokerCsv({
       csvContent: standardCsv,
       fundId: validFundId,
+      ownerUserId: "user-1",
       brokerName: "Zerodha",
       fileName: "trading-orders-all-2026-01-19T12_45_12.090Z.csv"
     });
@@ -99,7 +103,8 @@ RELIANCE,BUY,MARKET,CNC,abc,0,,,2450.50,FILLED,2026-04-05T09:15:00Z`;
 
     const result = await service.importBrokerCsv({
       csvContent: badNumberCsv,
-      fundId: validFundId
+      fundId: validFundId,
+      ownerUserId: "user-1"
     });
 
     expect(result.totalRows).toBe(1);
@@ -119,7 +124,8 @@ RELIANCE,BUY,MARKET,CNC,10,0,,,2450.50,FILLED,not-a-date`;
 
     const result = await service.importBrokerCsv({
       csvContent: badDateCsv,
-      fundId: validFundId
+      fundId: validFundId,
+      ownerUserId: "user-1"
     });
 
     expect(result.totalRows).toBe(1);
@@ -138,7 +144,8 @@ RELIANCE,BUY,MARKET,CNC,10,0,,,2450.50,FILLED,not-a-date`;
     await expect(
       service.importBrokerCsv({
         csvContent: "   ",
-        fundId: validFundId
+        fundId: validFundId,
+        ownerUserId: "user-1"
       })
     ).rejects.toBeInstanceOf(ApiError);
 
@@ -158,6 +165,7 @@ RELIANCE,BUY,MARKET,CNC,10,0,,,2450.50,FILLED,not-a-date`;
       service.importBrokerCsv({
         csvContent: validCsv,
         fundId: validFundId,
+        ownerUserId: "user-1",
         fileName: "orders.csv"
       })
     ).rejects.toMatchObject({

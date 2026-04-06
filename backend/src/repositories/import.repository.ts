@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db } from "../db/client.js";
-import { imports, rawOrders } from "../db/schema/trading.schema.js";
+import { funds, imports, rawOrders } from "../db/schema/trading.schema.js";
 import { OrderGroupRepository } from "./order-group.repository.js";
 import { TradeGroupingService } from "../services/trade-grouping.service.js";
 import { ApiError } from "../utils/api-error.js";
@@ -9,6 +9,16 @@ import { ApiError } from "../utils/api-error.js";
 import type { FailImportInput, FinalizeImportInput, CreateImportRecordInput, ImportPersistence } from "../types/import.types.js";
 
 class ImportRepository implements ImportPersistence {
+  async ensureFundOwnedByUser(fundId: string, ownerUserId: string) {
+    const rows = await db
+      .select({ id: funds.id })
+      .from(funds)
+      .where(and(eq(funds.id, fundId), eq(funds.ownerUserId, ownerUserId)))
+      .limit(1);
+
+    return rows[0] ?? null;
+  }
+
   async createImportRecord(input: CreateImportRecordInput) {
     try {
       const results = await db

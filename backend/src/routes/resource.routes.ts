@@ -21,12 +21,12 @@ resourceRouter.get("/tags", listTags);
 resourceRouter.post("/tags", requireAuth, createRateLimitMiddleware({ keyPrefix: "create-tag", maxRequests: 30 }), createTag);
 resourceRouter.patch("/tags/:id", requireAuth, createRateLimitMiddleware({ keyPrefix: "patch-tag", maxRequests: 30 }), patchTag);
 
-resourceRouter.get("/funds", listFunds);
+resourceRouter.get("/funds", requireAuth, listFunds);
 resourceRouter.post("/funds", requireAuth, createRateLimitMiddleware({ keyPrefix: "create-fund", maxRequests: 20 }), createFund);
 resourceRouter.patch("/funds/:id", requireAuth, createRateLimitMiddleware({ keyPrefix: "patch-fund", maxRequests: 20 }), patchFund);
 
-resourceRouter.get("/imports", listImports);
-resourceRouter.get("/imports/:id", getImportById);
+resourceRouter.get("/imports", requireAuth, listImports);
+resourceRouter.get("/imports/:id", requireAuth, getImportById);
 
 resourceRouter.patch("/notes/:id", requireAuth, createRateLimitMiddleware({ keyPrefix: "patch-note", maxRequests: 60 }), patchNote);
 resourceRouter.delete("/notes/:id", requireAuth, createRateLimitMiddleware({ keyPrefix: "delete-note", maxRequests: 60 }), deleteNote);

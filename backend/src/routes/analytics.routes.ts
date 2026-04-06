@@ -8,14 +8,15 @@ import {
   getTagInsights,
   getWinLoss
 } from "../controllers/analytics.controller.js";
+import { requireAuth } from "../middlewares/auth.middleware.js";
 
 const analyticsRouter = Router();
 
-analyticsRouter.get("/summary", getAnalyticsSummary);
-analyticsRouter.get("/performance-calendar", getPerformanceCalendar);
-analyticsRouter.get("/tag-insights", getTagInsights);
-analyticsRouter.get("/pnl-series", getPnlSeries);
-analyticsRouter.get("/holding-time", getHoldingTime);
-analyticsRouter.get("/win-loss", getWinLoss);
+analyticsRouter.get("/summary", requireAuth, getAnalyticsSummary);
+analyticsRouter.get("/performance-calendar", requireAuth, getPerformanceCalendar);
+analyticsRouter.get("/tag-insights", requireAuth, getTagInsights);
+analyticsRouter.get("/pnl-series", requireAuth, getPnlSeries);
+analyticsRouter.get("/holding-time", requireAuth, getHoldingTime);
+analyticsRouter.get("/win-loss", requireAuth, getWinLoss);
 
 export { analyticsRouter };

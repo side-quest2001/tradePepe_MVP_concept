@@ -2,6 +2,7 @@ import { and, count, desc, eq, gte, lte, sql } from "drizzle-orm";
 
 import { db } from "../db/client.js";
 import {
+  funds,
   orderGroupReviewTags,
   orderGroupSetupTags,
   orderGroups,
@@ -19,6 +20,10 @@ import type { DbExecutor } from "../types/db.types.js";
 
 function buildGroupFilters(filters: AnalyticsFilters) {
   const predicates = [eq(orderGroups.status, "closed")];
+
+  if (filters.ownerUserId) {
+    predicates.push(eq(funds.ownerUserId, filters.ownerUserId));
+  }
 
   if (filters.fundId) {
     predicates.push(eq(orderGroups.fundId, filters.fundId));
@@ -41,6 +46,10 @@ function buildGroupFilters(filters: AnalyticsFilters) {
 
 function buildOpenGroupFilters(filters: AnalyticsFilters) {
   const predicates = [eq(orderGroups.status, "open")];
+
+  if (filters.ownerUserId) {
+    predicates.push(eq(funds.ownerUserId, filters.ownerUserId));
+  }
 
   if (filters.fundId) {
     predicates.push(eq(orderGroups.fundId, filters.fundId));
@@ -65,19 +74,25 @@ export class AnalyticsRepositoryImpl implements AnalyticsRepository {
   constructor(private readonly executor: DbExecutor = db) {}
 
   async listClosedOrderGroups(filters: AnalyticsFilters) {
-    return this.executor
+    const rows = await this.executor
       .select()
       .from(orderGroups)
+      .innerJoin(funds, eq(funds.id, orderGroups.fundId))
       .where(buildGroupFilters(filters))
       .orderBy(desc(orderGroups.lastInteractionDate), desc(orderGroups.firstInteractionDate));
+
+    return rows.map((row) => row.order_groups);
   }
 
   async listOpenOrderGroups(filters: AnalyticsFilters) {
-    return this.executor
+    const rows = await this.executor
       .select()
       .from(orderGroups)
+      .innerJoin(funds, eq(funds.id, orderGroups.fundId))
       .where(buildOpenGroupFilters(filters))
       .orderBy(desc(orderGroups.firstInteractionDate));
+
+    return rows.map((row) => row.order_groups);
   }
 
   async getSetupTagCounts(filters: AnalyticsFilters): Promise<AnalyticsTagCount[]> {
@@ -91,6 +106,7 @@ export class AnalyticsRepositoryImpl implements AnalyticsRepository {
       .from(orderGroupSetupTags)
       .innerJoin(tradeTags, eq(tradeTags.id, orderGroupSetupTags.tradeTagId))
       .innerJoin(orderGroups, eq(orderGroups.id, orderGroupSetupTags.orderGroupId))
+      .innerJoin(funds, eq(funds.id, orderGroups.fundId))
       .where(buildGroupFilters(filters))
       .groupBy(tradeTags.id, tradeTags.slug, tradeTags.name)
       .orderBy(desc(count()));
@@ -107,6 +123,7 @@ export class AnalyticsRepositoryImpl implements AnalyticsRepository {
       .from(orderGroupReviewTags)
       .innerJoin(tradeTags, eq(tradeTags.id, orderGroupReviewTags.tradeTagId))
       .innerJoin(orderGroups, eq(orderGroups.id, orderGroupReviewTags.orderGroupId))
+      .innerJoin(funds, eq(funds.id, orderGroups.fundId))
       .where(buildGroupFilters(filters))
       .groupBy(tradeTags.id, tradeTags.slug, tradeTags.name)
       .orderBy(desc(count()));
@@ -126,6 +143,7 @@ export class AnalyticsRepositoryImpl implements AnalyticsRepository {
       .from(orderGroupSetupTags)
       .innerJoin(tradeTags, eq(tradeTags.id, orderGroupSetupTags.tradeTagId))
       .innerJoin(orderGroups, eq(orderGroups.id, orderGroupSetupTags.orderGroupId))
+      .innerJoin(funds, eq(funds.id, orderGroups.fundId))
       .where(buildGroupFilters(filters))
       .groupBy(tradeTags.id, tradeTags.slug, tradeTags.name)
       .orderBy(desc(count()));
@@ -145,6 +163,7 @@ export class AnalyticsRepositoryImpl implements AnalyticsRepository {
       .from(orderGroupReviewTags)
       .innerJoin(tradeTags, eq(tradeTags.id, orderGroupReviewTags.tradeTagId))
       .innerJoin(orderGroups, eq(orderGroups.id, orderGroupReviewTags.orderGroupId))
+      .innerJoin(funds, eq(funds.id, orderGroups.fundId))
       .where(buildGroupFilters(filters))
       .groupBy(tradeTags.id, tradeTags.slug, tradeTags.name)
       .orderBy(desc(count()));
@@ -161,6 +180,7 @@ export class AnalyticsRepositoryImpl implements AnalyticsRepository {
         neutral: sql<number>`sum(case when ${orderGroups.returnStatus} = 'neutral' then 1 else 0 end)::int`
       })
       .from(orderGroups)
+      .innerJoin(funds, eq(funds.id, orderGroups.fundId))
       .where(buildGroupFilters(filters))
       .groupBy(sql`date_trunc('day', coalesce(${orderGroups.lastInteractionDate}, ${orderGroups.firstInteractionDate}))`)
       .orderBy(sql`date_trunc('day', coalesce(${orderGroups.lastInteractionDate}, ${orderGroups.firstInteractionDate}))`);

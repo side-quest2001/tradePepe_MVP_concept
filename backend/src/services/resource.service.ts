@@ -74,14 +74,15 @@ export class ResourceService {
     return mapTag(updated);
   }
 
-  async listFunds() {
-    const funds = await this.repository.listFunds();
+  async listFunds(ownerUserId: string) {
+    const funds = await this.repository.listFunds(ownerUserId);
     return funds.map(mapFund);
   }
 
-  async createFund(input: CreateFundInput) {
+  async createFund(input: CreateFundInput, ownerUserId: string) {
     const code = slugify(input.name).toUpperCase().slice(0, 40) || "FUND";
     const fund = await this.repository.createFund({
+      ownerUserId,
       name: input.name,
       code,
       brokerName: input.brokerName ?? null,
@@ -91,8 +92,8 @@ export class ResourceService {
     return mapFund(fund);
   }
 
-  async updateFund(id: string, input: PatchFundInput) {
-    const existing = await this.repository.findFundById(id);
+  async updateFund(id: string, input: PatchFundInput, ownerUserId: string) {
+    const existing = await this.repository.findFundById(id, ownerUserId);
 
     if (!existing) {
       throw new ApiError(404, "Fund not found");
@@ -111,8 +112,8 @@ export class ResourceService {
     return mapFund(updated);
   }
 
-  async listImports(query: ImportsListQuery) {
-    const result = await this.repository.listImports(query);
+  async listImports(query: ImportsListQuery, ownerUserId: string) {
+    const result = await this.repository.listImports({ ...query, ownerUserId });
 
     return {
       ...result,
@@ -120,8 +121,8 @@ export class ResourceService {
     };
   }
 
-  async getImportById(id: string) {
-    const item = await this.repository.getImportById(id);
+  async getImportById(id: string, ownerUserId: string) {
+    const item = await this.repository.getImportById(id, ownerUserId);
 
     if (!item) {
       throw new ApiError(404, "Import not found");

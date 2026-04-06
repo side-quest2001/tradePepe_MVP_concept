@@ -17,6 +17,7 @@ import {
   UserProfile,
   WinLoss,
 } from '@/lib/api/types';
+import { ACCESS_TOKEN_COOKIE, getAccessTokenFromBrowser } from '@/lib/auth';
 import {
   mockCalendar,
   mockGroups,
@@ -124,11 +125,36 @@ function normalizeGroup(group: Record<string, unknown>): OrderGroup {
   };
 }
 
+function hasAuthorizationHeader(headers: RequestInit['headers']) {
+  if (!headers) return false;
+  if (headers instanceof Headers) return headers.has('Authorization');
+  if (Array.isArray(headers)) {
+    return headers.some(([key]) => key.toLowerCase() === 'authorization');
+  }
+  return Object.keys(headers).some((key) => key.toLowerCase() === 'authorization');
+}
+
 async function fetcher<T>(path: string, init?: RequestInit): Promise<T> {
+  let accessToken: string | null = null;
+
+  if (typeof window !== 'undefined') {
+    accessToken = getAccessTokenFromBrowser();
+  } else {
+    try {
+      const { cookies } = await import('next/headers');
+      accessToken = (await cookies()).get(ACCESS_TOKEN_COOKIE)?.value ?? null;
+    } catch {
+      accessToken = null;
+    }
+  }
+
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...(accessToken && !hasAuthorizationHeader(init?.headers)
+        ? { Authorization: `Bearer ${accessToken}` }
+        : {}),
       ...(init?.headers ?? {}),
     },
     cache: 'no-store',

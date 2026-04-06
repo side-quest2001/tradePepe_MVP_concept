@@ -21,6 +21,7 @@ export interface PaginatedResult<T> {
 }
 
 export interface OrderGroupFilters {
+  ownerUserId?: string;
   symbol?: string;
   fundId?: string;
   positionType?: "long" | "short";
@@ -37,6 +38,7 @@ export interface OrderGroupFilters {
 }
 
 export interface OrderFilters {
+  ownerUserId?: string;
   symbol?: string;
   fundId?: string;
   status?: RawOrder["normalizedStatus"];
@@ -58,11 +60,11 @@ export interface OrderGroupBundle {
 }
 
 export interface JournalRepository {
-  createManualOrderWithGrouping(input: NewRawOrder): Promise<{ order: RawOrder; orderGroup: OrderGroupBundle | null }>;
+  createManualOrderWithGrouping(input: NewRawOrder, ownerUserId: string): Promise<{ order: RawOrder; orderGroup: OrderGroupBundle | null }>;
   listOrders(filters: OrderFilters): Promise<PaginatedResult<RawOrder>>;
   listOrderGroups(filters: OrderGroupFilters): Promise<PaginatedResult<OrderGroup>>;
-  getOrderGroupBundle(id: string): Promise<OrderGroupBundle | null>;
-  getOrderGroupBundles(ids: string[]): Promise<OrderGroupBundle[]>;
+  getOrderGroupBundle(id: string, ownerUserId?: string): Promise<OrderGroupBundle | null>;
+  getOrderGroupBundles(ids: string[], ownerUserId?: string): Promise<OrderGroupBundle[]>;
   updateOrderGroup(id: string, input: Partial<OrderGroup>): Promise<OrderGroup | null>;
   createTradeNote(input: NewTradeNote): Promise<TradeNote>;
   listTradeNotes(orderGroupId: string): Promise<TradeNote[]>;
